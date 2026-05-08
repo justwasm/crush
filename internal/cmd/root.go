@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/justwasm/boba"
 	tea "charm.land/bubbletea/v2"
 	fang "charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
@@ -133,7 +134,7 @@ crush --continue
 
 		inputFilter := ui.NewFilter()
 		var env uv.Environ = os.Environ()
-		program := tea.NewProgram(
+		program := boba.NewProgram(
 			model,
 			tea.WithEnvironment(env),
 			tea.WithContext(cmd.Context()),
