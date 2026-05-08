@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/justwasm/boba"
 	tea "charm.land/bubbletea/v2"
 	fang "charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
@@ -150,7 +151,7 @@ crush --continue
 		// Don't leak the errors to the TUI
 		browser.Stderr = nil
 		browser.Stdout = nil
-		program := tea.NewProgram(
+		program := boba.NewProgram(
 			model,
 			tea.WithEnvironment(env),
 			tea.WithContext(cmd.Context()),

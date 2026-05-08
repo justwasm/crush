@@ -9,8 +9,8 @@ import (
 	"errors"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/catwalk/v3/pkg/catwalk"
+	"github.com/justwasm/boba"
 	mcptools "github.com/charmbracelet/crush/internal/agent/tools/mcp"
 	"github.com/charmbracelet/crush/internal/commands"
 	"github.com/charmbracelet/crush/internal/config"
@@ -287,7 +287,7 @@ type Workspace interface {
 	SkillSetConfigDisabled(ctx context.Context, name string, disabled bool) error
 
 	// Events
-	Subscribe(program *tea.Program)
+	Subscribe(program boba.Program)
 	Shutdown()
 }
 
