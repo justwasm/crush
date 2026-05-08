@@ -9,8 +9,8 @@ import (
 	"errors"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/catwalk/pkg/catwalk"
+	"github.com/justwasm/boba"
 	mcptools "github.com/charmbracelet/crush/internal/agent/tools/mcp"
 	"github.com/charmbracelet/crush/internal/commands"
 	"github.com/charmbracelet/crush/internal/config"
@@ -232,7 +232,7 @@ type Workspace interface {
 	MCPAuthURL(name string) string
 
 	// Events
-	Subscribe(program *tea.Program)
+	Subscribe(program boba.Program)
 	Shutdown()
 }
 
