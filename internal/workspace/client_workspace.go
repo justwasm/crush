@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/justwasm/boba"
 	"github.com/charmbracelet/crush/internal/agent/notify"
 	"github.com/charmbracelet/crush/internal/agent/tools/mcp"
 	"github.com/charmbracelet/crush/internal/client"
@@ -597,7 +598,7 @@ func (w *ClientWorkspace) DisableDockerMCP() error {
 
 // -- Lifecycle --
 
-func (w *ClientWorkspace) Subscribe(program *tea.Program) {
+func (w *ClientWorkspace) Subscribe(program boba.Program) {
 	defer log.RecoverPanic("ClientWorkspace.Subscribe", func() {
 		slog.Info("TUI subscription panic: attempting graceful shutdown")
 		program.Quit()
