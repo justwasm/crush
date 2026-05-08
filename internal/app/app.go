@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/catwalk/pkg/catwalk"
 	"charm.land/fantasy"
+	"github.com/justwasm/boba"
 	"github.com/charmbracelet/crush/internal/agent"
 	"github.com/charmbracelet/crush/internal/agent/notify"
 	"github.com/charmbracelet/crush/internal/agent/tools/mcp"
@@ -706,7 +707,7 @@ func (app *App) initCoderAgent(ctx context.Context, interactive bool) error {
 }
 
 // Subscribe sends events to the TUI as tea.Msgs.
-func (app *App) Subscribe(program *tea.Program) {
+func (app *App) Subscribe(program boba.Program) {
 	defer log.RecoverPanic("app.Subscribe", func() {
 		slog.Info("TUI subscription panic: attempting graceful shutdown")
 		program.Quit()
