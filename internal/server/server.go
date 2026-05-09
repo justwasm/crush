@@ -72,6 +72,9 @@ func ParseHostURL(host string) (*url.URL, error) {
 // macOS sun_path limit), we fall back to /tmp/crush-<uid>.sock so
 // the socket remains bindable.
 func DefaultHost() string {
+        if h := os.Getenv("CRUSH_HOST"); h != "" {
+                return h
+        }
 	sock := "crush.sock"
 	usr, err := user.Current()
 	if err == nil && usr.Uid != "" {
