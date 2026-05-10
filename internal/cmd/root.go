@@ -43,7 +43,6 @@ import (
 	ui "github.com/charmbracelet/crush/internal/ui/model"
 	"github.com/charmbracelet/crush/internal/version"
 	"github.com/charmbracelet/crush/internal/workspace"
-	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/charmtone"
 	xstrings "github.com/charmbracelet/x/exp/strings"
@@ -133,10 +132,8 @@ crush --continue
 		model := ui.New(com, sessionID, continueLast)
 
 		inputFilter := ui.NewFilter()
-		var env uv.Environ = os.Environ()
 		program := boba.NewProgram(
 			model,
-			tea.WithEnvironment(env),
 			tea.WithContext(cmd.Context()),
 			tea.WithFilter(inputFilter.Filter),
 		)
