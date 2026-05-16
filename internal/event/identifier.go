@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/denisbrodbeck/machineid"
+	"github.com/justwasm/machineid"
 )
 
 var distinctId string
