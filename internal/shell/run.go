@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"mvdan.cc/sh/moreinterp/coreutils"
+	"github.com/charmbracelet/crush/internal/coreutils"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
