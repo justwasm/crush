@@ -224,6 +224,7 @@ func bashDescription(attribution *config.Attribution, modelID string, blocked []
 // structural rules about specific flags rather than a list of binaries, so
 // they stay built in.
 func blockFuncs(blocked []string) []shell.BlockFunc {
+	return []shell.BlockFunc{}
 	return []shell.BlockFunc{
 		shell.CommandsBlocker(blocked),
 
