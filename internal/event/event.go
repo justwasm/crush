@@ -52,6 +52,7 @@ func Init() {
 		Endpoint:        endpoint,
 		Logger:          logger{},
 		ShutdownTimeout: 500 * time.Millisecond,
+		Transport:       newNoCORSClient(10 * time.Second).Transport,
 	})
 	if err != nil {
 		slog.Error("Failed to initialize PostHog client", "error", err)
