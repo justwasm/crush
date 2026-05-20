@@ -5,7 +5,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"runtime"
 
+	_ "github.com/ozanturksever/sqlite3-vfs-idb"
 	"github.com/ncruces/go-sqlite3"
 	"github.com/ncruces/go-sqlite3/driver"
 )
@@ -25,6 +27,9 @@ func openDB(dbPath string) (*sql.DB, error) {
 	// preventing deferred-to-writer upgrade deadlocks. The "file:" prefix
 	// is required for the ncruces driver to parse query parameters.
 	dsn := fmt.Sprintf("file:%s?_txlock=immediate", dbPath)
+	if runtime.GOOS == "js" {
+		dsn += "&vfs=idb"
+	}
 	db, err := driver.Open(dsn, func(c *sqlite3.Conn) error {
 		// Set pragmas for better performance via _pragma query params.
 		// Format: PRAGMA name = value;
