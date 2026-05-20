@@ -13,6 +13,7 @@ import (
 
 	"charm.land/catwalk/pkg/catwalk"
 	"github.com/charmbracelet/crush/internal/agent/hyper"
+	"github.com/charmbracelet/crush/internal/proxy"
 	xetag "github.com/charmbracelet/x/etag"
 )
 
@@ -101,7 +102,7 @@ func (r realHyperClient) Get(ctx context.Context, etag string) (catwalk.Provider
 	}
 	xetag.Request(req, etag)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(30 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("failed to make request: %w", err)
