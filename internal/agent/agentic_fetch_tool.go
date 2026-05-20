@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/crush/internal/agent/prompt"
 	"github.com/charmbracelet/crush/internal/agent/tools"
 	"github.com/charmbracelet/crush/internal/permission"
+	"github.com/charmbracelet/crush/internal/proxy"
 )
 
 //go:embed templates/agentic_fetch.md
@@ -52,15 +53,7 @@ var agenticFetchPromptTmpl []byte
 
 func (c *coordinator) agenticFetchTool(_ context.Context, client *http.Client) (fantasy.AgentTool, error) {
 	if client == nil {
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.MaxIdleConns = 100
-		transport.MaxIdleConnsPerHost = 10
-		transport.IdleConnTimeout = 90 * time.Second
-
-		client = &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
-		}
+		client = proxy.NewHTTPClientFromEnv(30 * time.Second)
 	}
 
 	return fantasy.NewParallelAgentTool(

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"charm.land/fantasy"
+	"github.com/charmbracelet/crush/internal/proxy"
 )
 
 //go:embed web_search.md.tpl
@@ -22,15 +23,7 @@ var webSearchDescriptionTpl = template.Must(
 // NewWebSearchTool creates a web search tool for sub-agents (no permissions needed).
 func NewWebSearchTool(client *http.Client) fantasy.AgentTool {
 	if client == nil {
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.MaxIdleConns = 100
-		transport.MaxIdleConnsPerHost = 10
-		transport.IdleConnTimeout = 90 * time.Second
-
-		client = &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
-		}
+		client = proxy.NewHTTPClientFromEnv(30 * time.Second)
 	}
 
 	return fantasy.NewParallelAgentTool(
