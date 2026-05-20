@@ -1,12 +1,14 @@
 package event
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/crush/internal/version"
@@ -14,13 +16,19 @@ import (
 )
 
 const (
-	endpoint = "https://data.charm.land"
-	key      = "phc_4zt4VgDWLqbYnJYEwLRxFoaTL2noNrQij0C6E8k3I0V"
-
 	nonInteractiveAttrName       = "NonInteractive"
 	nonInteractiveNestedAttrName = "NonInteractiveNested"
 	continueSessionByIDAttrName  = "ContinueSessionByID"
 	continueLastSessionAttrName  = "ContinueLastSession"
+)
+
+var (
+	endpoint = sync.OnceValue(func() string {
+		return cmp.Or(os.Getenv("POSTHOG_ENDPOINT"), "https://data.charm.land")
+	})
+	key = sync.OnceValue(func() string {
+		return cmp.Or(os.Getenv("POSTHOG_API_KEY"), "phc_4zt4VgDWLqbYnJYEwLRxFoaTL2noNrQij0C6E8k3I0V")
+	})
 )
 
 var (
@@ -52,10 +60,12 @@ func SetContinueLastSession(continueLastSession bool) {
 }
 
 func Init() {
-	c, err := posthog.NewWithConfig(key, posthog.Config{
-		Endpoint:        endpoint,
+	c, err := posthog.NewWithConfig(key(), posthog.Config{
+		DisableGeoIP:    new(false),
+		Endpoint:        endpoint(),
 		Logger:          logger{},
 		ShutdownTimeout: 500 * time.Millisecond,
+		Transport:       newNoCORSClient(10 * time.Second).Transport,
 	})
 	if err != nil {
 		slog.Error("Failed to initialize PostHog client", "error", err)
