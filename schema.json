@@ -469,6 +469,13 @@
           "description": "Disable sending metrics",
           "default": false
         },
+        "api_retry_proxy_prefix": {
+          "type": "string",
+          "description": "Retry failed provider API requests once through this trusted proxy prefix. Retried requests include the full request URL, headers, and body",
+          "examples": [
+            "https://no-cors.deno.dev/"
+          ]
+        },
         "initialize_as": {
           "type": "string",
           "description": "Name of the context file to create/update during project initialization",
