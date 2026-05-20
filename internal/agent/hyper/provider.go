@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"charm.land/catwalk/pkg/catwalk"
+	"github.com/charmbracelet/crush/internal/proxy"
 )
 
 //go:generate wget -O provider.json https://hyper.charm.land/v1/provider
@@ -61,7 +62,7 @@ func FetchCredits(ctx context.Context, apiKey string) (int, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(10 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("failed to make request: %w", err)
