@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/crush/internal/agent/hyper"
 	"github.com/charmbracelet/crush/internal/event"
 	"github.com/charmbracelet/crush/internal/oauth"
+	"github.com/charmbracelet/crush/internal/proxy"
 )
 
 // DeviceAuthResponse contains the response from the device authorization endpoint.
@@ -51,7 +52,7 @@ func InitiateDeviceAuth(ctx context.Context) (*DeviceAuthResponse, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "crush")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(30 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
@@ -126,7 +127,7 @@ func pollOnce(ctx context.Context, deviceCode string) (TokenResponse, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "crush")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(30 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("execute request: %w", err)
@@ -169,7 +170,7 @@ func ExchangeToken(ctx context.Context, refreshToken string) (*oauth.Token, erro
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "crush")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(30 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
@@ -226,7 +227,7 @@ func IntrospectToken(ctx context.Context, accessToken string) (*IntrospectTokenR
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "crush")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxy.NewHTTPClientFromEnv(30 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)

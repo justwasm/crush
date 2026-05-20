@@ -7,9 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/charmbracelet/crush/internal/log"
+	"github.com/charmbracelet/crush/internal/proxy"
 )
 
 var assistantRolePattern = regexp.MustCompile(`"role"\s*:\s*"assistant"`)
@@ -17,12 +19,20 @@ var assistantRolePattern = regexp.MustCompile(`"role"\s*:\s*"assistant"`)
 // NewClient creates a new HTTP client with a custom transport that adds the
 // X-Initiator header based on message history in the request body.
 func NewClient(isSubAgent, debug bool) *http.Client {
+	var inner http.RoundTripper = http.DefaultTransport
+	if proxyURL := os.Getenv(proxy.CORSProxyEnv); proxyURL != "" {
+		inner = &proxy.RetryWithProxyTransport{
+			Transport: inner,
+			ProxyURL:  proxyURL,
+		}
+	}
 	return &http.Client{
-		Transport: &initiatorTransport{debug: debug, isSubAgent: isSubAgent},
+		Transport: &initiatorTransport{inner: inner, debug: debug, isSubAgent: isSubAgent},
 	}
 }
 
 type initiatorTransport struct {
+	inner      http.RoundTripper
 	debug      bool
 	isSubAgent bool
 }
@@ -75,5 +85,5 @@ func (t *initiatorTransport) roundTrip(req *http.Request) (*http.Response, error
 	if t.debug {
 		return log.NewHTTPClient().Transport.RoundTrip(req)
 	}
-	return http.DefaultTransport.RoundTrip(req)
+	return t.inner.RoundTrip(req)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/crush/internal/csync"
 	"github.com/charmbracelet/crush/internal/home"
 	"github.com/charmbracelet/crush/internal/permission"
+	"github.com/charmbracelet/crush/internal/proxy"
 	"github.com/charmbracelet/crush/internal/pubsub"
 	"github.com/charmbracelet/crush/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -472,11 +473,8 @@ func createTransport(ctx context.Context, m config.MCPConfig, resolver config.Va
 		if err != nil {
 			return nil, err
 		}
-		client := &http.Client{
-			Transport: &headerRoundTripper{
-				headers: headers,
-			},
-		}
+		transport := mcpProxyTransport(headers)
+		client := &http.Client{Transport: transport}
 		return &mcp.StreamableClientTransport{
 			Endpoint:   url,
 			HTTPClient: client,
@@ -493,11 +491,8 @@ func createTransport(ctx context.Context, m config.MCPConfig, resolver config.Va
 		if err != nil {
 			return nil, err
 		}
-		client := &http.Client{
-			Transport: &headerRoundTripper{
-				headers: headers,
-			},
-		}
+		transport := mcpProxyTransport(headers)
+		client := &http.Client{Transport: transport}
 		return &mcp.SSEClientTransport{
 			Endpoint:   url,
 			HTTPClient: client,
@@ -509,13 +504,34 @@ func createTransport(ctx context.Context, m config.MCPConfig, resolver config.Va
 
 type headerRoundTripper struct {
 	headers map[string]string
+	next    http.RoundTripper
 }
 
 func (rt headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	for k, v := range rt.headers {
 		req.Header.Set(k, v)
 	}
-	return http.DefaultTransport.RoundTrip(req)
+	next := rt.next
+	if next == nil {
+		next = http.DefaultTransport
+	}
+	return next.RoundTrip(req)
+}
+
+// mcpProxyTransport builds the transport chain for MCP HTTP calls.
+// If CRUSH_CORS_PROXY is set, failed requests are retried through the proxy.
+func mcpProxyTransport(headers map[string]string) http.RoundTripper {
+	var transport http.RoundTripper = http.DefaultTransport
+	if proxyURL := os.Getenv(proxy.CORSProxyEnv); proxyURL != "" {
+		transport = &proxy.RetryWithProxyTransport{
+			Transport: transport,
+			ProxyURL:  proxyURL,
+		}
+	}
+	return &headerRoundTripper{
+		headers: headers,
+		next:    transport,
+	}
 }
 
 func mcpTimeout(m config.MCPConfig) time.Duration {
