@@ -818,6 +818,31 @@ Or set the `CRUSH_DISABLE_PROVIDER_AUTO_UPDATE` environment variable:
 export CRUSH_DISABLE_PROVIDER_AUTO_UPDATE=1
 ```
 
+## Provider API retry proxy
+
+If your network can only reach a model provider through a trusted HTTP proxy
+prefix, you can opt in to retry failed provider API requests once through that
+prefix.
+
+> [!WARNING]
+> Retried requests include the full provider URL, headers, and body. Only use
+> this with a proxy you trust.
+
+```json
+{
+  "$schema": "https://charm.land/crush.json",
+  "options": {
+    "api_retry_proxy_prefix": "https://no-cors.deno.dev/"
+  }
+}
+```
+
+Or set the `CRUSH_API_RETRY_PROXY_PREFIX` environment variable:
+
+```bash
+export CRUSH_API_RETRY_PROXY_PREFIX=https://no-cors.deno.dev/
+```
+
 ### Manually updating providers
 
 Manually updating providers is possible with the `crush update-providers`

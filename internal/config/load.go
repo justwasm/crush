@@ -471,6 +471,10 @@ func (c *Config) setDefaults(workingDir, dataDir string) {
 		c.Options.DisableDefaultProviders, _ = strconv.ParseBool(str)
 	}
 
+	if str := os.Getenv("CRUSH_API_RETRY_PROXY_PREFIX"); str != "" {
+		c.Options.APIRetryProxyPrefix = str
+	}
+
 	if c.Options.Attribution == nil {
 		c.Options.Attribution = &Attribution{
 			TrailerStyle:  TrailerStyleAssistedBy,
