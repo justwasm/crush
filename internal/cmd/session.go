@@ -153,7 +153,7 @@ func sessionSetup(cmd *cobra.Command) (context.Context, *sessionServices, func()
 		q:        queries,
 		conn:     conn,
 	}
-	return ctx, svc, func() { conn.Close() }, nil
+	return ctx, svc, func() { _ = db.Release(dataDir) }, nil
 }
 
 func runSessionList(cmd *cobra.Command, _ []string) error {

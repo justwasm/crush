@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/crush/internal/db"
 	"github.com/charmbracelet/crush/internal/event"
+	"github.com/spf13/cobra"
 )
 
 const sessionTransferVersion = 1
