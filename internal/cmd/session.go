@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,6 +86,22 @@ var sessionRenameCmd = &cobra.Command{
 	RunE:  runSessionRename,
 }
 
+var sessionExportCmd = &cobra.Command{
+	Use:   "export [path]",
+	Short: "Export sessions as JSONL",
+	Long:  "Export all sessions from the database as JSON Lines. Writes to stdout by default.",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runSessionExport,
+}
+
+var sessionImportCmd = &cobra.Command{
+	Use:   "import [path]",
+	Short: "Import sessions from JSONL",
+	Long:  "Import sessions from JSON Lines. Reads from stdin by default.",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runSessionImport,
+}
+
 func init() {
 	sessionListCmd.Flags().BoolVar(&sessionListJSON, "json", false, "output in JSON format")
 	sessionShowCmd.Flags().BoolVar(&sessionShowJSON, "json", false, "output in JSON format")
@@ -96,12 +113,16 @@ func init() {
 	sessionCmd.AddCommand(sessionLastCmd)
 	sessionCmd.AddCommand(sessionDeleteCmd)
 	sessionCmd.AddCommand(sessionRenameCmd)
+	sessionCmd.AddCommand(sessionExportCmd)
+	sessionCmd.AddCommand(sessionImportCmd)
 }
 
 type sessionServices struct {
 	sessions session.Service
 	messages message.Service
 	cfg      *config.ConfigStore
+	q        *db.Queries
+	conn     *sql.DB
 }
 
 func sessionSetup(cmd *cobra.Command) (context.Context, *sessionServices, func(), error) {
@@ -129,6 +150,8 @@ func sessionSetup(cmd *cobra.Command) (context.Context, *sessionServices, func()
 		sessions: session.NewService(queries, conn),
 		messages: message.NewService(queries),
 		cfg:      cfg,
+		q:        queries,
+		conn:     conn,
 	}
 	return ctx, svc, func() { conn.Close() }, nil
 }
