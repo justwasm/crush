@@ -142,7 +142,7 @@ crush --continue
 	},
 }
 
-var heartbit = lipgloss.NewStyle().Foreground(charmtone.Dolly).SetString(`
+var heartbit = lipgloss.NewStyle().Foreground(charmtone.Julep).SetString(`
     ▄▄▄▄▄▄▄▄    ▄▄▄▄▄▄▄▄
   ███████████  ███████████
 ████████████████████████████

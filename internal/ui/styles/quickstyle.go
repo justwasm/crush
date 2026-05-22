@@ -577,7 +577,7 @@ func quickStyle(o quickStyleOpts) Styles {
 	s.Header.Charm = base.Foreground(o.secondary)
 	s.Header.Diagonals = base.Foreground(o.primary)
 	s.Header.Percentage = muted
-	s.Header.Hypercredit = base.Foreground(charmtone.Dolly)
+	s.Header.Hypercredit = base.Foreground(charmtone.Julep)
 	s.Header.Keystroke = muted
 	s.Header.KeystrokeTip = subtle
 	s.Header.WorkingDir = muted
@@ -765,7 +765,7 @@ func quickStyle(o quickStyleOpts) Styles {
 	s.ModelInfo.TokenPercentage = lipgloss.NewStyle().Foreground(o.fgMoreSubtle)
 	s.ModelInfo.EstimatedUsagePrefix = s.ModelInfo.TokenPercentage
 	s.ModelInfo.Cost = lipgloss.NewStyle().Foreground(o.fgMoreSubtle)
-	s.ModelInfo.HypercreditIcon = lipgloss.NewStyle().Foreground(charmtone.Dolly)
+	s.ModelInfo.HypercreditIcon = lipgloss.NewStyle().Foreground(charmtone.Julep)
 	s.ModelInfo.HypercreditText = lipgloss.NewStyle().Foreground(o.fgMoreSubtle)
 
 	// ResourceGroup

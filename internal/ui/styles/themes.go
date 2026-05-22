@@ -18,8 +18,8 @@ func ThemeForProvider(providerID string) Styles {
 // for the UI.
 func CharmtonePantera() Styles {
 	return quickStyle(quickStyleOpts{
-		primary:   charmtone.Charple,
-		secondary: charmtone.Dolly,
+		primary:   charmtone.Guac,
+		secondary: charmtone.Julep,
 		accent:    charmtone.Bok,
 		keyword:   charmtone.Blush,
 
@@ -54,8 +54,8 @@ func CharmtonePantera() Styles {
 // HypercrushObsidiana returns the Hypercrush dark theme.
 func HypercrushObsidiana() Styles {
 	return quickStyle(quickStyleOpts{
-		primary:   charmtone.Charple,
-		secondary: charmtone.Dolly,
+		primary:   charmtone.Guac,
+		secondary: charmtone.Julep,
 		accent:    charmtone.Bok,
 
 		fgBase:       charmtone.Ash,

@@ -58,7 +58,7 @@ func collectDirs(cmd *cobra.Command) []string {
 }
 
 func printDirs(cmd *cobra.Command, dirs []string) {
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(charmtone.Charple)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(charmtone.Guac)
 
 	labels := make([]string, len(dirs))
 	longest := 0
