@@ -152,7 +152,7 @@ async function main() {
     'HOME': '/home/me',
     'TMPDIR': '/tmp',
     'GOMODCACHE': '/home/me/.cache/go-mod',
-    'GOPROXY': 'https://proxy.golang.org/',
+    'GOPROXY': 'https://goproxy.up.railway.app/',
     'GOROOT': '/usr/local/go',
     'PATH': '/bin:/home/me/go/bin:/usr/local/go/bin/js_wasm:/usr/local/go/pkg/tool/js_wasm',
     ...extractGoEnv(),
