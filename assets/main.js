@@ -70,24 +70,6 @@ function extractGoEnv(search = window.location.search) {
   return env;
 }
 
-function waitForBridge() {
-  return new Promise((resolve) => {
-    function check() {
-      if (
-        globalThis.bubbletea_resize !== undefined &&
-        globalThis.bubbletea_read !== undefined &&
-        globalThis.bubbletea_write !== undefined
-      ) {
-        resolve();
-      } else {
-        console.log("waiting for bubbletea bridge…");
-        setTimeout(check, 500);
-      }
-    }
-    check();
-  });
-}
-
 function initTerminal() {
   const term = new Terminal({
     convertEol: true,
@@ -177,13 +159,13 @@ async function main() {
   };
   const initPath = new URLSearchParams(location.search).get("init") ||
     "init.wasm";
-  const result = await WebAssembly.instantiateStreaming(
+  const initResult = await WebAssembly.instantiateStreaming(
     fetch(initPath),
     go.importObject,
   );
 
-  // Start the WASM module (non-blocking); Go registers the bridge globals as it runs
-  const runPromise = go.run(result.instance);
+  // Start the WASM module (non-blocking); Go registers the process and fs globals as it runs
+  go.run(initResult.instance);
 
   // Setup fs mounts
   const { hackpad, fs } = window
@@ -213,10 +195,17 @@ async function main() {
   const mainPath = new URLSearchParams(location.search).get("main") ||
     "crush.wasm";
   await hackpad.install(mainPath)
-  child_process.spawn(mainPath.replace(/\.wasm$/, ''))
 
   // Wait until go-booba registers the JS bridge globals
-  await waitForBridge();
+  await new Promise((resolve) => {
+    window.addEventListener("bubbletea-ready", resolve, { once: true })
+    child_process.spawn(mainPath.replace(/\.wasm$/, ''))
+  })
+
+  // Detect program exit.
+  const runPromise =  new Promise((resolve) => {
+    window.addEventListener("bubbletea-close", resolve, { once: true })
+  })
 
   // Hide the loading overlay
   loading.classList.add("hidden");
