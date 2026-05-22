@@ -75,6 +75,7 @@ function initTerminal() {
     convertEol: true,
     cursorBlink: true,
     allowTransparency: true,
+    scrollbar: { showScrollbar: false },
   });
   const imageAddon = new ImageAddon.ImageAddon();
   term.loadAddon(imageAddon);
