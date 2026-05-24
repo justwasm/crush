@@ -143,7 +143,7 @@ async function main() {
   const go = new Go();
   go.env = {
     'CRUSH_DISABLE_PROVIDER_AUTO_UPDATE': '1',
-    'CRUSH_VERSION': 'v0.70.0',
+    'CRUSH_VERSION': 'v0.71.0',
     'CRUSH_CORE_UTILS': '1',
     'CRUSH_CORS_PROXY': 'https://no-cors.deno.dev/',
     'POSTHOG_ENDPOINT': 'https://us.i.posthog.com',
