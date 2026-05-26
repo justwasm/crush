@@ -40,6 +40,7 @@ type Opts struct {
 // The compact argument determines whether it renders compact for the sidebar
 // or wider for the main pane.
 func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
+	o.Hyper = true
 	charm := "@ohmygate"
 	if !o.Hyper {
 		charm = " " + charm
