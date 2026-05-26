@@ -4,8 +4,8 @@ set -euo pipefail
 
 ### setup go
 
-GOGO=/tmp/go-toolchain
-# GOGO=../hackpad/cache
+# GOGO=/tmp/go-toolchain
+GOGO=../hackpad/cache
 
 if ! [[ -d "$GOGO/go" ]]; then
   mkdir -p "$GOGO/go"
@@ -31,4 +31,4 @@ cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./assets
 
 bun build --compile --outfile=./build/index.html --target=browser ./assets/index.html
 
-# RELAY=:8841 ufo pub ./build
+RELAY=:8841 ufo pub ./build

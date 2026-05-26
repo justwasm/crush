@@ -196,6 +196,7 @@ async function main() {
   const mainPath = new URLSearchParams(location.search).get("main") ||
     "crush.wasm";
   await hackpad.install(mainPath)
+  await hackpad.install("kubectl.wasm")
 
   // Wait until go-booba registers the JS bridge globals
   await new Promise((resolve) => {
