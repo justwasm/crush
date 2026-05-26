@@ -186,11 +186,20 @@ func Providers(cfg *Config) ([]catwalk.Provider, error) {
 
 		wg.Wait()
 
+		providerList = slices.Collect(providers.Seq())
 		if hyperFound {
-			providerList = append([]catwalk.Provider{hyperProvider}, slices.Collect(providers.Seq())...)
-		} else {
-			providerList = slices.Collect(providers.Seq())
+			providerList = append([]catwalk.Provider{hyperProvider}, providerList...)
 		}
+
+		// GateRouter before everything, including Hyper.
+		if idx := slices.IndexFunc(providerList, func(p catwalk.Provider) bool {
+			return p.ID == catwalk.InferenceProviderGateRouter
+		}); idx > 0 {
+			p := providerList[idx]
+			providerList = append(providerList[:idx], providerList[idx+1:]...)
+			providerList = append([]catwalk.Provider{p}, providerList...)
+		}
+
 		providerErr = errors.Join(errs...)
 	})
 	return providerList, providerErr
