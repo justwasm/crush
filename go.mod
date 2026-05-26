@@ -2,6 +2,8 @@ module github.com/charmbracelet/crush
 
 go 1.26.3
 
+replace charm.land/catwalk => github.com/ohmygate/catwalk v0.42.2
+
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.6

@@ -753,6 +753,13 @@ func (c *ProviderConfig) TestConnection(resolver VariableResolver) error {
 			return fmt.Errorf("invalid API key format for provider %s", c.ID)
 		}
 		return nil
+	case catwalk.InferenceProviderGateRouter:
+		// NOTE: GateRouter has no good endpoint we can use to validate the API key.
+		// Let's at least check the pattern.
+		if !strings.HasPrefix(apiKey, "sk-") {
+			return fmt.Errorf("invalid API key format for provider %s", c.ID)
+		}
+		return nil
 	}
 
 	switch c.Type {
