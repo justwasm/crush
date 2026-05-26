@@ -40,7 +40,7 @@ type Opts struct {
 // The compact argument determines whether it renders compact for the sidebar
 // or wider for the main pane.
 func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
-	charm := "Charm™"
+	charm := "@ohmygate"
 	if !o.Hyper {
 		charm = " " + charm
 	}
@@ -54,19 +54,17 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 	var hyperLetterforms []letterform
 	if o.Hyper {
 		hyperLetterforms = []letterform{
+			LetterO,
 			LetterH,
-			LetterYAlt,
-			LetterP,
-			LetterE,
-			LetterR,
+			LetterM,
+			LetterY,
 		}
 	}
 	crushLetterforms := []letterform{
-		LetterC,
-		LetterR,
-		LetterU,
-		LetterSAlt,
-		LetterH,
+		LetterG,
+		LetterA,
+		LetterT,
+		LetterE,
 	}
 	if o.Hyper && !compact {
 		crushLetterforms = append(hyperLetterforms, crushLetterforms...)
@@ -80,6 +78,7 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 		// Stretch a random letterform on every render.
 		stretchIndex = rand.IntN(len(crushLetterforms))
 	}
+	stretchIndex = -1
 	crush := renderWord(spacing, stretchIndex, crushLetterforms...)
 	if o.Hyper && compact {
 		crush = renderWord(spacing, stretchIndex, hyperLetterforms...) + "\n" + crush
