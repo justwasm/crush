@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - wasm
+      - ohmygate
   workflow_dispatch: {}
 
 concurrency:
