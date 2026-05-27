@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
-	"golang.org/x/sys/unix"
+	"syscall"
 )
 
 // errLockContended is returned by tryFileLock when the lock is already
@@ -30,16 +29,16 @@ func tryFileLock(path string) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("open lock file: %w", err)
 	}
-	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = f.Close()
-		if errors.Is(err, unix.EWOULDBLOCK) {
+		if errors.Is(err, syscall.EWOULDBLOCK) {
 			return nil, errLockContended
 		}
 		return nil, fmt.Errorf("flock: %w", err)
 	}
 	return func() {
 		// Closing the descriptor releases the flock atomically.
-		_ = unix.Flock(int(f.Fd()), unix.LOCK_UN)
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 		_ = f.Close()
 	}, nil
 }
