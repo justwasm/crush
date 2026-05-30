@@ -31,7 +31,7 @@ func main() {
 	fmt.Printf("Sending native notification: title=%q message=%q\n", *title, *message)
 
 	if err := beeep.Notify(*title, *message, nil); err != nil {
-		log.Fatalf("beeep.Notify: %v", err)
+		log.Fatalf("Failed to send notification: %v", err)
 	}
 
 	// On js/wasm the browser Notification API may be asynchronous; wait gives

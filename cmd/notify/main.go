@@ -50,7 +50,7 @@ func main() {
 	case "bell":
 		b = notification.NewBellBackend()
 	default:
-		fmt.Fprintf(os.Stderr, "unknown backend %q; choose native, osc99, osc777 or bell\n", *backend)
+		fmt.Fprintf(os.Stderr, "Unknown backend %q; choose native, osc99, osc777 or bell\n", *backend)
 		os.Exit(1)
 	}
 
