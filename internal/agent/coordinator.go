@@ -689,7 +689,7 @@ func (c *coordinator) buildTools(ctx context.Context, agent config.Agent, isSubA
 	}
 
 	if slices.Contains(agent.AllowedTools, tools.AgenticFetchToolName) {
-		agenticFetchTool, err := c.agenticFetchTool(ctx, nil)
+		agenticFetchTool, err := c.agenticFetchTool(ctx, log.NewHTTPClientWithTimeout(30*time.Second))
 		if err != nil {
 			return nil, err
 		}
@@ -719,14 +719,14 @@ func (c *coordinator) buildTools(ctx context.Context, agent config.Agent, isSubA
 		tools.NewCrushLogsTool(logFile),
 		tools.NewJobOutputTool(),
 		tools.NewJobKillTool(),
-		tools.NewDownloadTool(c.permissions, c.cfg.WorkingDir(), nil),
+		tools.NewDownloadTool(c.permissions, c.cfg.WorkingDir(), log.NewHTTPClientWithTimeout(5*time.Minute)),
 		tools.NewEditTool(c.lspManager, c.permissions, c.history, c.filetracker, c.cfg.WorkingDir()),
 		tools.NewMultiEditTool(c.lspManager, c.permissions, c.history, c.filetracker, c.cfg.WorkingDir()),
-		tools.NewFetchTool(c.permissions, c.cfg.WorkingDir(), nil),
+		tools.NewFetchTool(c.permissions, c.cfg.WorkingDir(), log.NewHTTPClientWithTimeout(30*time.Second)),
 		tools.NewGlobTool(c.cfg.WorkingDir(), c.cfg.Config().Tools.Glob),
 		tools.NewGrepTool(c.cfg.WorkingDir(), c.cfg.Config().Tools.Grep),
 		tools.NewLsTool(c.permissions, c.cfg.WorkingDir(), c.cfg.Config().Tools.Ls),
-		tools.NewSourcegraphTool(nil),
+		tools.NewSourcegraphTool(log.NewHTTPClientWithTimeout(30*time.Second)),
 		tools.NewTodosTool(c.sessions),
 		tools.NewViewTool(c.lspManager, c.permissions, c.filetracker, c.skillTracker, c.cfg.WorkingDir(), c.cfg.Config().Options.SkillsPaths...),
 		tools.NewWriteTool(c.lspManager, c.permissions, c.history, c.filetracker, c.cfg.WorkingDir()),
