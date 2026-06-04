@@ -7,9 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 // retrySleep is the interval between non-blocking flock retries in the
@@ -19,11 +18,11 @@ const retrySleep = 100 * time.Millisecond
 
 func lockFile(ctx context.Context, f *os.File) (func(), error) {
 	for {
-		err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB)
+		err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 		if err == nil {
-			return func() { _ = unix.Flock(int(f.Fd()), unix.LOCK_UN) }, nil
+			return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }, nil
 		}
-		if !errors.Is(err, unix.EWOULDBLOCK) {
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
 			return nil, fmt.Errorf("flock: %w", err)
 		}
 		select {
@@ -35,11 +34,11 @@ func lockFile(ctx context.Context, f *os.File) (func(), error) {
 }
 
 func tryLockFile(f *os.File) (func(), error) {
-	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
-		if errors.Is(err, unix.EWOULDBLOCK) {
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		if errors.Is(err, syscall.EWOULDBLOCK) {
 			return nil, ErrContended
 		}
 		return nil, fmt.Errorf("flock: %w", err)
 	}
-	return func() { _ = unix.Flock(int(f.Fd()), unix.LOCK_UN) }, nil
+	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }, nil
 }
