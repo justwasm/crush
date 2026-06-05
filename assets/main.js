@@ -1,74 +1,16 @@
+import * as Comlink from 'comlink';
+import { Terminal } from '@xterm/xterm';
+import { ClipboardAddon } from '@xterm/addon-clipboard';
+import { FitAddon } from '@xterm/addon-fit';
+import { ImageAddon } from '@xterm/addon-image';
+import { WebglAddon } from '@xterm/addon-webgl';
+
 const loading = document.getElementById("loading");
 
-function promisify(fn) {
-  return (...args) => {
-    return new Promise((resolve, reject) => {
-      const newArgs = [...args]
-      newArgs.push((err, ...results) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(results)
-        }
-      })
-      fn(...newArgs)
-    })
-  }
-}
-
-/**
- * Extract Go WASM environment variables from URL query parameters.
- *
- * Query parameters prefixed with `env.` are mapped into a plain object
- * suitable for assigning to `go.env` before `go.run(instance)`.
- *
- * Example:
- *
- *   URL:
- *     ?env.TERM=xterm-256color&env.DEBUG=1
- *
- *   Result:
- *     {
- *       TERM: "xterm-256color",
- *       DEBUG: "1",
- *     }
- *
- * Usage:
- *
- *   const go = new Go()
- *   go.env = extractGoEnv()
- *
- * Supported format:
- *
- *   ?env.KEY=value
- *
- * Notes:
- *
- * - Keys must match `/^[A-Z0-9_]+$/i`
- * - Values are automatically URL-decoded by URLSearchParams
- * - Non-`env.*` parameters are ignored
- */
-function extractGoEnv(search = window.location.search) {
-  const params = new URLSearchParams(search);
-  const env = {};
-
-  for (const [key, value] of params.entries()) {
-    if (!key.startsWith("env.")) {
-      continue;
-    }
-
-    const envKey = key.slice(4);
-
-    // optional validation
-    if (!/^[A-Z0-9_]+$/i.test(envKey)) {
-      continue;
-    }
-
-    env[envKey] = value;
-  }
-
-  return env;
-}
+const workerUrl = new URL('./worker.js', import.meta.url);
+workerUrl.search = location.search;
+const worker = new Worker(workerUrl, { type: 'module' });
+const wasm = Comlink.wrap(worker);
 
 function initTerminal() {
   const term = new Terminal({
@@ -77,11 +19,16 @@ function initTerminal() {
     allowTransparency: true,
     scrollbar: { showScrollbar: false },
   });
-  const imageAddon = new ImageAddon.ImageAddon();
+
+  const clipboardAddon = new ClipboardAddon();
+  term.loadAddon(clipboardAddon);
+
+  const imageAddon = new ImageAddon();
   term.loadAddon(imageAddon);
-  const fitAddon = new FitAddon.FitAddon();
+
+  const fitAddon = new FitAddon();
   if (new URLSearchParams(location.search).get("webgl") !== null) {
-    const webglAddon = new WebglAddon.WebglAddon();
+    const webglAddon = new WebglAddon();
     try {
       term.loadAddon(webglAddon);
     } catch (e) {
@@ -92,6 +39,7 @@ function initTerminal() {
     }
   }
   term.loadAddon(fitAddon);
+
   term.open(document.getElementById("terminal-container"));
 
   fitAddon.fit();
@@ -99,24 +47,37 @@ function initTerminal() {
 
   term.focus();
 
-  // Send initial size to Go
-  bubbletea_resize(term.cols, term.rows);
+  // Send initial size to Go via worker
+  wasm.resize(term.cols, term.rows).catch(() => {});
 
   /** Whether the Go program has exited; gate all input after this point. */
   let exited = false;
 
   // Poll Go output and write to terminal
+  // Guard flag prevents overlapping read() calls when round-trip > interval.
+  let reading = false;
   const pollInterval = setInterval(() => {
-    if (exited) return;
-    const data = bubbletea_read();
-    if (data && data.length > 0) {
-      term.write(data);
-    }
+    if (exited || reading) return;
+    reading = true;
+    wasm.read()
+      .then(data => data?.length && term.write(data))
+      .catch(err => {
+        console.error("read error:", err);
+        setExited(true);
+        clearInterval(pollInterval);
+        term.write("\r\n\r\n[Worker error — reload page to restart]");
+      })
+      .finally(() => { reading = false; });
   }, 16);
 
-  // Forward resize events to Go
+  // Forward resize events to Go (debounced — skip intermediate states during live resize)
+  let resizeTimer;
   term.onResize((size) => {
-    if (!exited) bubbletea_resize(size.cols, size.rows);
+    if (exited) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      wasm.resize(size.cols, size.rows).catch(() => {});
+    }, 80);
   });
 
   // Forward key/paste input to Go; reload after exit
@@ -125,7 +86,7 @@ function initTerminal() {
       location.reload();
       return;
     }
-    bubbletea_write(data);
+    wasm.write(data).catch(() => {});
   });
 
   return {
@@ -138,75 +99,13 @@ function initTerminal() {
 }
 
 async function main() {
-  let overlayProgress = 0;
-  let progressListeners = [];
-  const go = new Go();
-  go.env = {
-    'CRUSH_DISABLE_PROVIDER_AUTO_UPDATE': '1',
-    'CRUSH_VERSION': 'v0.75.0',
-    'CRUSH_CORE_UTILS': '1',
-    'CRUSH_CORS_PROXY': 'https://wstack.up.railway.app/',
-    'POSTHOG_ENDPOINT': 'https://us.i.posthog.com',
-    'POSTHOG_API_KEY': '8H7TL2sgfFiHLfza-o2_u2BPvNeVJBjQcQKq0yr3KR0',
-    'TERM': 'xterm-256color',
-    'USER': 'me',
-    'HOME': '/home/me',
-    'TMPDIR': '/tmp',
-    'GOMODCACHE': '/home/me/.cache/go-mod',
-    'GOPROXY': 'https://goproxy.up.railway.app/',
-    'GOROOT': '/usr/local/go',
-    'PATH': '/bin:/home/me/go/bin:/usr/local/go/bin/js_wasm:/usr/local/go/pkg/tool/js_wasm',
-    ...extractGoEnv(),
-  };
-  const initPath = new URLSearchParams(location.search).get("init") ||
-    "init.wasm";
-  const initResult = await WebAssembly.instantiateStreaming(
-    fetch(initPath),
-    go.importObject,
-  );
-
-  // Start the WASM module (non-blocking); Go registers the process and fs globals as it runs
-  go.run(initResult.instance);
-
-  // Setup fs mounts
-  const { hackpad, fs } = window
-  console.log(`init status: ${hackpad.ready ? 'ready' : 'not ready'}`)
-
-  let mkdir = promisify(fs.mkdir)
-  await mkdir("/bin", {mode: 0o700})
-  await hackpad.overlayIndexedDB('/bin', {cache: true})
-  await hackpad.overlayIndexedDB('/home/me')
-  await mkdir("/home/me/.cache", {recursive: true, mode: 0o700})
-  await hackpad.overlayIndexedDB('/home/me/.cache', {cache: true})
-
-  await mkdir("/usr/local/go", {recursive: true, mode: 0o700})
-  await hackpad.overlayTarGzip('/usr/local/go', '/hackpad/wasm/go.tar.gz', {
-    persist: true,
-    skipCacheDirs: [
-      '/usr/local/go/bin/js_wasm',
-      '/usr/local/go/pkg/tool/js_wasm',
-    ],
-    progress: percentage => {
-      overlayProgress = percentage
-      progressListeners.forEach(c => c(percentage))
-    },
-  })
-
-  // Install and start main wasm
-  const mainPath = new URLSearchParams(location.search).get("main") ||
-    "crush.wasm";
-  await hackpad.install(mainPath)
-
-  // Wait until go-booba registers the JS bridge globals
-  await new Promise((resolve) => {
-    window.addEventListener("bubbletea-ready", resolve, { once: true })
-    child_process.spawn(mainPath.replace(/\.wasm$/, ''))
-  })
-
-  // Detect program exit.
-  const runPromise =  new Promise((resolve) => {
-    window.addEventListener("bubbletea-close", resolve, { once: true })
-  })
+  // Wait for the worker to finish initialising the WASM environment
+  try {
+    await wasm.waitForReady();
+  } catch (e) {
+    loading.textContent = "Failed to load crush.wasm — check console for details";
+    throw e;
+  }
 
   // Hide the loading overlay
   loading.classList.add("hidden");
@@ -214,12 +113,16 @@ async function main() {
   const { term, pollInterval, setExited } = initTerminal();
 
   // When the Go program exits, show a restart prompt
-  runPromise.then(() => {
-    console.log("wasm finished");
-    setExited(true);
-    clearInterval(pollInterval);
-    term.write("\r\n\r\nPress any key to continue...");
-  });
+  // Note: bubbletea-close may not reliably reach the main worker from the
+  // sub-worker, so the promise often rejects. Handle both paths identically.
+  wasm.waitForClose()
+    .catch(() => {})
+    .finally(() => {
+      console.log("session ended");
+      setExited(true);
+      clearInterval(pollInterval);
+      term.write("\r\n\r\nPress any key to continue...");
+    });
 }
 
 main().catch(console.error);
