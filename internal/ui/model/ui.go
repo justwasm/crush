@@ -261,7 +261,8 @@ type UI struct {
 
 	// shellCancel cancels the currently running shell command (if any).
 	// Set by runShellExecution, called by ESC key handling.
-	shellCancel context.CancelFunc
+	shellCancel   context.CancelFunc
+	shellCancelID string
 
 	// isCompact tracks whether we're currently in compact layout mode (either
 	// by user toggle or auto-switch based on window size)
@@ -2081,6 +2082,7 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				if m.shellCancel != nil {
 					m.shellCancel()
 					m.shellCancel = nil
+					m.shellCancelID = ""
 					status := "Shell command cancelled"
 					cmds = append(cmds, util.ReportInfo(status))
 					break
@@ -3413,19 +3415,18 @@ func (m *UI) runShellCommand(command string) tea.Cmd {
 
 // runShellExecution executes a shell command and returns the result.
 func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
-	// Cancel any previous shell command still running.
-	if m.shellCancel != nil {
-		m.shellCancel()
-	}
-
 	workingDir := m.com.Workspace.WorkingDir()
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithCancel(context.Background())
 		m.shellCancel = cancel
+		m.shellCancelID = toolCallID
 		defer func() {
 			cancel()
-			m.shellCancel = nil
+			if m.shellCancelID == toolCallID {
+				m.shellCancel = nil
+				m.shellCancelID = ""
+			}
 		}()
 
 		var stdout, stderr bytes.Buffer
