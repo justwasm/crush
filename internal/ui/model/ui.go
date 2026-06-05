@@ -1147,10 +1147,21 @@ func (m *UI) appendSessionMessage(msg message.Message) tea.Cmd {
 		return nil
 	}
 
+	// Extract items and check each one's ID against the chat.
+	// ToolMessageItems use toolCall.ID (e.g. "shell_xxx") as their ID,
+	// not the message DB UUID, so the msg.ID check above doesn't catch
+	// them. Without this, a stale CreatedEvent can append a duplicate
+	// tool item that gets orphaned in the list but still rendered.
+	items := chat.ExtractMessageItems(m.com.Styles, &msg, nil)
+	for _, item := range items {
+		if m.chat.MessageItem(item.ID()) != nil {
+			return nil
+		}
+	}
+
 	switch msg.Role {
 	case message.User:
 		m.lastUserMessageTime = msg.CreatedAt
-		items := chat.ExtractMessageItems(m.com.Styles, &msg, nil)
 		for _, item := range items {
 			if animatable, ok := item.(chat.Animatable); ok {
 				if cmd := animatable.StartAnimation(); cmd != nil {
@@ -1163,7 +1174,6 @@ func (m *UI) appendSessionMessage(msg message.Message) tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	case message.Assistant:
-		items := chat.ExtractMessageItems(m.com.Styles, &msg, nil)
 		for _, item := range items {
 			if animatable, ok := item.(chat.Animatable); ok {
 				if cmd := animatable.StartAnimation(); cmd != nil {
@@ -2492,7 +2502,6 @@ func (m *UI) ShortHelp() []key.Binding {
 		binds,
 		k.Quit,
 		k.Help,
-		k.BashMode,
 	)
 
 	return binds
