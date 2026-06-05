@@ -437,9 +437,14 @@ func ShouldRenderAssistantMessage(msg *message.Message) bool {
 }
 
 // ShouldRenderUserMessage determines if a user message should be rendered.
-// Always renders if there is text content or tool calls.
+// When the message has inline tool calls, the tool cards handle the display
+// (e.g. bash tool cards show the command), so we skip the user bubble to
+// avoid duplicating the command text.
 func ShouldRenderUserMessage(msg *message.Message) bool {
-	return strings.TrimSpace(msg.Content().Text) != "" || len(msg.ToolCalls()) > 0
+	if len(msg.ToolCalls()) > 0 {
+		return false
+	}
+	return strings.TrimSpace(msg.Content().Text) != ""
 }
 
 // BuildToolResultMap creates a map of tool call IDs to their results from a list of messages.
