@@ -3458,9 +3458,12 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg, sessionID string) tea.
 			Command: msg.command,
 		})
 
-		resultContent := fmt.Sprintf("$ %s\n%s", msg.command, msg.output)
+		resultContent := msg.output
 		if msg.exitCode != 0 {
-			resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
+			if resultContent != "" {
+				resultContent += "\n"
+			}
+			resultContent += fmt.Sprintf("Exit code %d", msg.exitCode)
 		}
 
 		if _, err := m.com.Workspace.CreateMessage(ctx, sessionID, message.CreateMessageParams{
