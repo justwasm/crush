@@ -482,16 +482,90 @@ func (m *Message) ToAIMessage() []fantasy.Message {
 			})
 		}
 		text = PromptWithTextAttachments(text, textAttachments)
-		// Append tool result content so inline tool calls embedded in user
-		// messages (e.g. shell command persistence) are visible to the LLM.
-		for _, tr := range m.ToolResults() {
-			if tr.Content != "" {
-				if text != "" {
-					text += "\n"
-				}
-				text += tr.Content
+
+		// When a user message embeds inline tool calls with results
+		// (e.g. shell command persistence), emit them as structured
+		// Assistant + Tool message pair so the LLM sees proper tool
+		// result semantics. This satisfies providers (Anthropic, etc.)
+		// that require Tool messages to reference a preceding Assistant
+		// ToolCall.
+		toolCalls := m.ToolCalls()
+		toolResults := m.ToolResults()
+		if len(toolCalls) > 0 && len(toolResults) > 0 {
+			if text != "" {
+				parts = append(parts, fantasy.TextPart{Text: text})
 			}
+			for _, content := range m.BinaryContent() {
+				if strings.HasPrefix(content.MIMEType, "text/") {
+					continue
+				}
+				parts = append(parts, fantasy.FilePart{
+					Filename:  content.Path,
+					Data:      content.Data,
+					MediaType: content.MIMEType,
+				})
+			}
+			messages = append(messages, fantasy.Message{
+				Role:    fantasy.MessageRoleUser,
+				Content: parts,
+			})
+
+			// Synthetic Assistant message carrying the tool calls so
+			// providers can correlate the subsequent Tool messages.
+			var asstParts []fantasy.MessagePart
+			for _, call := range toolCalls {
+				asstParts = append(asstParts, fantasy.ToolCallPart{
+					ToolCallID: call.ID,
+					ToolName:   call.Name,
+					Input:      call.Input,
+				})
+			}
+			if len(asstParts) > 0 {
+				messages = append(messages, fantasy.Message{
+					Role:    fantasy.MessageRoleAssistant,
+					Content: asstParts,
+				})
+			}
+
+			// Tool message with the results, matching the format used
+			// in the Tool role case below.
+			var toolParts []fantasy.MessagePart
+			for _, result := range toolResults {
+				var content fantasy.ToolResultOutputContent
+				if result.IsError {
+					content = fantasy.ToolResultOutputContentError{
+						Error: errors.New(result.Content),
+					}
+				} else if result.Data != "" {
+					if stringext.IsValidBase64(result.Data) {
+						content = fantasy.ToolResultOutputContentMedia{
+							Data:      result.Data,
+							MediaType: result.MIMEType,
+						}
+					} else {
+						content = fantasy.ToolResultOutputContentText{
+							Text: mediaLoadFailedPlaceholder,
+						}
+					}
+				} else {
+					content = fantasy.ToolResultOutputContentText{
+						Text: result.Content,
+					}
+				}
+				toolParts = append(toolParts, fantasy.ToolResultPart{
+					ToolCallID: result.ToolCallID,
+					Output:     content,
+				})
+			}
+			if len(toolParts) > 0 {
+				messages = append(messages, fantasy.Message{
+					Role:    fantasy.MessageRoleTool,
+					Content: toolParts,
+				})
+			}
+			break
 		}
+
 		if text != "" {
 			parts = append(parts, fantasy.TextPart{Text: text})
 		}
