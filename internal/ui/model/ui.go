@@ -3365,7 +3365,8 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 }
 
 // runShellCommand creates a bash tool call in the chat and executes the
-// command. The tool call is purely in-memory so it won't be sent to the LLM.
+// command. The command and output are persisted to the session DB so they
+// survive reloads and appear in the LLM context on follow-up prompts.
 func (m *UI) runShellCommand(command string) tea.Cmd {
 	if !m.hasSession() {
 		return util.ReportError(fmt.Errorf("no active session"))
