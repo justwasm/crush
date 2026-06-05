@@ -374,7 +374,32 @@ func ExtractMessageItems(sty *styles.Styles, msg *message.Message, toolResults m
 			sty.Attachments.Text,
 			sty.Attachments.Skill,
 		)
-		return []MessageItem{NewUserMessageItem(sty, msg, r)}
+		var items []MessageItem
+		if ShouldRenderUserMessage(msg) {
+			items = append(items, NewUserMessageItem(sty, msg, r))
+		}
+		for _, tc := range msg.ToolCalls() {
+			var result *message.ToolResult
+			if tr, ok := toolResults[tc.ID]; ok {
+				result = &tr
+			}
+			if result == nil {
+				for _, r := range msg.ToolResults() {
+					if r.ToolCallID == tc.ID {
+						result = &r
+						break
+					}
+				}
+			}
+			items = append(items, NewToolMessageItem(
+				sty,
+				msg.ID,
+				tc,
+				result,
+				false,
+			))
+		}
+		return items
 	case message.Assistant:
 		var items []MessageItem
 		if ShouldRenderAssistantMessage(msg) {
@@ -409,6 +434,12 @@ func ShouldRenderAssistantMessage(msg *message.Message) bool {
 	isCancelled := msg.FinishReason() == message.FinishReasonCanceled
 	hasToolCalls := len(msg.ToolCalls()) > 0
 	return !hasToolCalls || content != "" || thinking != "" || msg.IsThinking() || isError || isCancelled
+}
+
+// ShouldRenderUserMessage determines if a user message should be rendered.
+// Always renders if there is text content or tool calls.
+func ShouldRenderUserMessage(msg *message.Message) bool {
+	return strings.TrimSpace(msg.Content().Text) != "" || len(msg.ToolCalls()) > 0
 }
 
 // BuildToolResultMap creates a map of tool call IDs to their results from a list of messages.

@@ -482,6 +482,16 @@ func (m *Message) ToAIMessage() []fantasy.Message {
 			})
 		}
 		text = PromptWithTextAttachments(text, textAttachments)
+		// Append tool result content so inline tool calls embedded in user
+		// messages (e.g. shell command persistence) are visible to the LLM.
+		for _, tr := range m.ToolResults() {
+			if tr.Content != "" {
+				if text != "" {
+					text += "\n"
+				}
+				text += tr.Content
+			}
+		}
 		if text != "" {
 			parts = append(parts, fantasy.TextPart{Text: text})
 		}

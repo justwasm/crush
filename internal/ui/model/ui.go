@@ -3440,9 +3440,9 @@ type shellCmdCompleteMsg struct {
 	exitCode   int
 }
 
-// persistShellCommand persists the shell command and its output as session
-// messages so they survive session reloads and are included in the LLM context
-// on follow-up prompts.
+// persistShellCommand persists the shell command and its output as a single
+// user message containing the text, tool call, and tool result, so they
+// survive session reloads and render with the nice bash tool call styling.
 func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
 	// Shell mode is local-only — we need the AppWorkspace's message service.
 	aw, ok := m.com.Workspace.(*workspace.AppWorkspace)
@@ -3452,68 +3452,35 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
 	svc := aw.App().Messages
 
 	return func() tea.Msg {
-		ctx := context.Background()
-
-		// 1. Create a user message with the command text.
-		_, err := svc.Create(ctx, m.session.ID, message.CreateMessageParams{
-			Role: message.User,
-			Parts: []message.ContentPart{
-				message.TextContent{Text: fmt.Sprintf("$ %s", msg.command)},
-			},
-		})
-		if err != nil {
-			slog.Error("Failed to persist shell command as user message",
-				"error", err, "session", m.session.ID)
-			return nil
-		}
-
-		// 2. Create an assistant message with the bash tool call.
 		input, _ := json.Marshal(agenttools.BashParams{
 			Command: msg.command,
 		})
-		assistantMsg, err := svc.Create(ctx, m.session.ID, message.CreateMessageParams{
-			Role: message.Assistant,
+
+		resultContent := fmt.Sprintf("$ %s\n%s", msg.command, msg.output)
+		if msg.exitCode != 0 {
+			resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
+		}
+
+		if _, err := svc.Create(context.Background(), m.session.ID, message.CreateMessageParams{
+			Role: message.User,
 			Parts: []message.ContentPart{
+				message.TextContent{Text: fmt.Sprintf("$ %s", msg.command)},
 				message.ToolCall{
 					ID:       msg.toolCallID,
 					Name:     "bash",
 					Input:    string(input),
 					Finished: true,
 				},
-			},
-		})
-		if err != nil {
-			slog.Error("Failed to persist shell command as assistant message",
-				"error", err, "session", m.session.ID)
-			return nil
-		}
-
-		assistantMsg.AddFinish(message.FinishReasonEndTurn, "", "")
-		if err := svc.Update(ctx, assistantMsg); err != nil {
-			slog.Error("Failed to update assistant message with finish reason",
-				"error", err, "session", m.session.ID)
-		}
-
-		// 3. Create a tool message with the command output.
-		resultContent := fmt.Sprintf("$ %s\n%s", msg.command, msg.output)
-		if msg.exitCode != 0 {
-			resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
-		}
-		_, err = svc.Create(ctx, m.session.ID, message.CreateMessageParams{
-			Role: message.Tool,
-			Parts: []message.ContentPart{
 				message.ToolResult{
 					ToolCallID: msg.toolCallID,
 					Name:       "bash",
 					Content:    resultContent,
 				},
 			},
-		})
-		if err != nil {
-			slog.Error("Failed to persist shell command result",
+		}); err != nil {
+			slog.Error("Failed to persist shell command",
 				"error", err, "session", m.session.ID)
 		}
-
 		return nil
 	}
 }
