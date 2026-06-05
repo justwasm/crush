@@ -3438,8 +3438,12 @@ func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
 		})
 
 		exitCode := 0
+		cancelled := false
 		if runErr != nil {
 			exitCode = shell.ExitCode(runErr)
+			if errors.Is(runErr, context.Canceled) {
+				cancelled = true
+			}
 		}
 
 		output := stdout.String()
@@ -3456,6 +3460,7 @@ func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
 			command:    command,
 			output:     output,
 			exitCode:   exitCode,
+			cancelled:  cancelled,
 		}
 	}
 }
@@ -3466,6 +3471,7 @@ type shellCmdCompleteMsg struct {
 	command    string
 	output     string
 	exitCode   int
+	cancelled  bool
 }
 
 // persistShellCommand persists the shell command and its output as a single
@@ -3504,6 +3510,7 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg, sessionID string) tea.
 					ToolCallID: msg.toolCallID,
 					Name:       "bash",
 					Content:    resultContent,
+					IsError:    msg.cancelled,
 				},
 			},
 		}); err != nil {

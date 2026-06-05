@@ -396,7 +396,7 @@ func ExtractMessageItems(sty *styles.Styles, msg *message.Message, toolResults m
 				msg.ID,
 				tc,
 				result,
-				false,
+				result != nil && result.IsError,
 			))
 		}
 		return items
