@@ -958,7 +958,9 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shellCmdCompleteMsg:
 		// Persist to session DB so shell commands survive reloads and
 		// appear in the LLM context on follow-up prompts.
-		cmds = append(cmds, m.persistShellCommand(msg))
+		// Capture session ID now — the cmd runs async and m.session may
+		// change before it executes.
+		cmds = append(cmds, m.persistShellCommand(msg, m.session.ID))
 
 		// Remove the in-memory tool call item — the persisted messages
 		// (rendered via pubsub subscription) will replace it.
@@ -3445,8 +3447,13 @@ type shellCmdCompleteMsg struct {
 // persistShellCommand persists the shell command and its output as a single
 // user message containing the text, tool call, and tool result, so they
 // survive session reloads and render with the nice bash tool call styling.
-func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
+// sessionID must be captured at call time — the cmd runs async and m.session
+// may change before it executes.
+func (m *UI) persistShellCommand(msg shellCmdCompleteMsg, sessionID string) tea.Cmd {
 	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
 		input, _ := json.Marshal(agenttools.BashParams{
 			Command: msg.command,
 		})
@@ -3456,7 +3463,7 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
 			resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
 		}
 
-		if _, err := m.com.Workspace.CreateMessage(context.Background(), m.session.ID, message.CreateMessageParams{
+		if _, err := m.com.Workspace.CreateMessage(ctx, sessionID, message.CreateMessageParams{
 			Role: message.User,
 			Parts: []message.ContentPart{
 				message.TextContent{Text: fmt.Sprintf("$ %s", msg.command)},
@@ -3474,7 +3481,7 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
 			},
 		}); err != nil {
 			slog.Error("Failed to persist shell command",
-				"error", err, "session", m.session.ID)
+				"error", err, "session", sessionID)
 		}
 		return nil
 	}
