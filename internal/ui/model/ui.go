@@ -259,6 +259,10 @@ type UI struct {
 	// treated as a shell command instead of an LLM prompt.
 	shellMode bool
 
+	// shellCancel cancels the currently running shell command (if any).
+	// Set by runShellExecution, called by ESC key handling.
+	shellCancel context.CancelFunc
+
 	// isCompact tracks whether we're currently in compact layout mode (either
 	// by user toggle or auto-switch based on window size)
 	isCompact bool
@@ -2073,6 +2077,14 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 					cmds = append(cmds, cmd)
 				}
 			case key.Matches(msg, m.keyMap.Editor.Escape):
+				// If a shell command is running, cancel it first.
+				if m.shellCancel != nil {
+					m.shellCancel()
+					m.shellCancel = nil
+					status := "Shell command cancelled"
+					cmds = append(cmds, util.ReportInfo(status))
+					break
+				}
 				cmd := m.handleHistoryEscape(msg)
 				if cmd != nil {
 					cmds = append(cmds, cmd)
@@ -3401,11 +3413,23 @@ func (m *UI) runShellCommand(command string) tea.Cmd {
 
 // runShellExecution executes a shell command and returns the result.
 func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
+	// Cancel any previous shell command still running.
+	if m.shellCancel != nil {
+		m.shellCancel()
+	}
+
 	workingDir := m.com.Workspace.WorkingDir()
 
 	return func() tea.Msg {
+		ctx, cancel := context.WithCancel(context.Background())
+		m.shellCancel = cancel
+		defer func() {
+			cancel()
+			m.shellCancel = nil
+		}()
+
 		var stdout, stderr bytes.Buffer
-		runErr := shell.Run(context.Background(), shell.RunOptions{
+		runErr := shell.Run(ctx, shell.RunOptions{
 			Command: command,
 			Cwd:     workingDir,
 			Env:     os.Environ(),
