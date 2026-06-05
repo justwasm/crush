@@ -102,7 +102,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("ctrl+y"),
 			key.WithHelp("ctrl+y", "toggle yolo"),
 		),
-		BashMode: key.NewBinding(),
+		BashMode: key.NewBinding(
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "toggle bash"),
+		),
 	}
 
 	km.Editor.AddFile = key.NewBinding(
