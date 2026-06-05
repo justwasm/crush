@@ -40,7 +40,15 @@ type BashToolRenderContext struct{}
 // RenderTool implements the [ToolRenderer] interface.
 func (b *BashToolRenderContext) RenderTool(sty *styles.Styles, width int, opts *ToolRenderOpts) string {
 	cappedWidth := cappedMessageWidth(width)
+
 	if opts.IsPending() {
+		var params tools.BashParams
+		if err := json.Unmarshal([]byte(opts.ToolCall.Input), &params); err == nil && params.Command != "" {
+			cmd := strings.ReplaceAll(params.Command, "\n", " ")
+			cmd = strings.ReplaceAll(cmd, "\t", "    ")
+			rendered := pendingTool(sty, "Bash", opts.Anim, opts.Compact)
+			return rendered + " " + lipgloss.NewStyle().Foreground(lipgloss.Color("243")).Render(cmd)
+		}
 		return pendingTool(sty, "Bash", opts.Anim, opts.Compact)
 	}
 
