@@ -177,6 +177,10 @@ func (w *ClientWorkspace) ListAllUserMessages(ctx context.Context) ([]message.Me
 	return protoToMessages(msgs), nil
 }
 
+func (w *ClientWorkspace) CreateMessage(ctx context.Context, sessionID string, params message.CreateMessageParams) (message.Message, error) {
+	return message.Message{}, errors.New("CreateMessage not supported in client workspace")
+}
+
 // -- Agent --
 
 func (w *ClientWorkspace) AgentRun(ctx context.Context, sessionID, prompt string, attachments ...message.Attachment) error {

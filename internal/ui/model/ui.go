@@ -62,6 +62,7 @@ import (
 	"github.com/charmbracelet/ultraviolet/screen"
 	"github.com/charmbracelet/x/editor"
 	xstrings "github.com/charmbracelet/x/exp/strings"
+	"github.com/google/uuid"
 )
 
 // MouseScrollThreshold defines how many lines to scroll the chat when a mouse
@@ -3372,7 +3373,7 @@ func (m *UI) runShellCommand(command string) tea.Cmd {
 		return util.ReportError(fmt.Errorf("no active session"))
 	}
 
-	toolCallID := fmt.Sprintf("shell_%d", time.Now().UnixNano())
+	toolCallID := fmt.Sprintf("shell_%s", uuid.New().String())
 	input, _ := json.Marshal(agenttools.BashParams{
 		Command: command,
 	})
@@ -3445,13 +3446,6 @@ type shellCmdCompleteMsg struct {
 // user message containing the text, tool call, and tool result, so they
 // survive session reloads and render with the nice bash tool call styling.
 func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
-	// Shell mode is local-only — we need the AppWorkspace's message service.
-	aw, ok := m.com.Workspace.(*workspace.AppWorkspace)
-	if !ok {
-		return nil
-	}
-	svc := aw.App().Messages
-
 	return func() tea.Msg {
 		input, _ := json.Marshal(agenttools.BashParams{
 			Command: msg.command,
@@ -3462,7 +3456,7 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg) tea.Cmd {
 			resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
 		}
 
-		if _, err := svc.Create(context.Background(), m.session.ID, message.CreateMessageParams{
+		if _, err := m.com.Workspace.CreateMessage(context.Background(), m.session.ID, message.CreateMessageParams{
 			Role: message.User,
 			Parts: []message.ContentPart{
 				message.TextContent{Text: fmt.Sprintf("$ %s", msg.command)},
