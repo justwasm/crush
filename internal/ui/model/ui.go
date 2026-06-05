@@ -965,7 +965,7 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// appear in the LLM context on follow-up prompts.
 		// Capture session ID now — the cmd runs async and m.session may
 		// change before it executes.
-		cmds = append(cmds, m.persistBashCommand(msg, m.session.ID))
+		cmds = append(cmds, tea.Sequence(m.persistBashCommand(msg, m.session.ID), m.loadPromptHistory()))
 
 		// Remove the in-memory tool call item — the persisted messages
 		// (rendered via pubsub subscription) will replace it.
@@ -2029,13 +2029,13 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				if command, ok := strings.CutPrefix(value, "!"); ok && command != "" {
 					m.randomizePlaceholders()
 					m.historyReset()
-					return tea.Batch(m.runBashCommand(command), m.loadPromptHistory())
+					return m.runBashCommand(command)
 				}
 
 				if m.bashMode && value != "" {
 					m.randomizePlaceholders()
 					m.historyReset()
-					return tea.Batch(m.runBashCommand(value), m.loadPromptHistory())
+					return m.runBashCommand(value)
 				}
 
 				attachments := m.attachments.List()
@@ -2047,7 +2047,7 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				m.randomizePlaceholders()
 				m.historyReset()
 
-				return tea.Batch(m.sendMessage(value, attachments...), m.loadPromptHistory())
+				return tea.Sequence(m.sendMessage(value, attachments...), m.loadPromptHistory())
 			case key.Matches(msg, m.keyMap.Chat.NewSession):
 				if !m.hasSession() {
 					break
