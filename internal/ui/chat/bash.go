@@ -40,7 +40,6 @@ type BashToolRenderContext struct{}
 // RenderTool implements the [ToolRenderer] interface.
 func (b *BashToolRenderContext) RenderTool(sty *styles.Styles, width int, opts *ToolRenderOpts) string {
 	cappedWidth := cappedMessageWidth(width)
-
 	if opts.IsPending() {
 		var params tools.BashParams
 		if err := json.Unmarshal([]byte(opts.ToolCall.Input), &params); err == nil && params.Command != "" {
