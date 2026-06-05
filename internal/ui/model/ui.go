@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -40,6 +41,7 @@ import (
 	"github.com/charmbracelet/crush/internal/permission"
 	"github.com/charmbracelet/crush/internal/pubsub"
 	"github.com/charmbracelet/crush/internal/session"
+	"github.com/charmbracelet/crush/internal/shell"
 	"github.com/charmbracelet/crush/internal/skills"
 	"github.com/charmbracelet/crush/internal/stringext"
 	"github.com/charmbracelet/crush/internal/ui/anim"
@@ -251,6 +253,10 @@ type UI struct {
 
 	// forceCompactMode tracks whether compact mode is forced by user toggle
 	forceCompactMode bool
+
+	// shellMode tracks whether the editor is in shell mode, where input is
+	// treated as a shell command instead of an LLM prompt.
+	shellMode bool
 
 	// isCompact tracks whether we're currently in compact layout mode (either
 	// by user toggle or auto-switch based on window size)
@@ -948,6 +954,24 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ttl = DefaultStatusTTL
 		}
 		cmds = append(cmds, clearInfoMsgCmd(ttl))
+	case shellCmdCompleteMsg:
+		if item := m.chat.MessageItem(msg.toolCallID); item != nil {
+			if toolItem, ok := item.(chat.ToolMessageItem); ok {
+				resultContent := fmt.Sprintf("$ %s\n%s", msg.command, msg.output)
+				if msg.exitCode != 0 {
+					resultContent += fmt.Sprintf("\n\nExit code %d", msg.exitCode)
+				}
+				toolItem.SetResult(&message.ToolResult{
+					ToolCallID: msg.toolCallID,
+					Name:       "bash",
+					Content:    resultContent,
+				})
+				toolItem.SetStatus(chat.ToolStatusSuccess)
+				tc := toolItem.ToolCall()
+				tc.Finished = true
+				toolItem.SetToolCall(tc)
+			}
+		}
 	case app.UpdateAvailableMsg:
 		text := fmt.Sprintf("Crush update available: v%s → v%s.", msg.CurrentVersion, msg.LatestVersion)
 		if msg.IsDevelopment {
@@ -992,6 +1016,9 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.com.Workspace.PermissionSkipRequests() {
 			m.textarea.Placeholder = "Yolo mode!"
+		}
+		if m.shellMode {
+			m.textarea.Placeholder = "Shell mode!"
 		}
 	}
 
@@ -1416,6 +1443,10 @@ func (m *UI) handleDialogMsg(msg tea.Msg) tea.Cmd {
 		yolo := !m.com.Workspace.PermissionSkipRequests()
 		m.com.Workspace.PermissionSetSkipRequests(yolo)
 		m.setEditorPrompt(yolo)
+		m.dialog.CloseDialog(dialog.CommandsID)
+	case dialog.ActionToggleShellMode:
+		m.shellMode = !m.shellMode
+		m.setEditorPrompt(m.com.Workspace.PermissionSkipRequests())
 		m.dialog.CloseDialog(dialog.CommandsID)
 	case dialog.ActionSelectNotificationStyle:
 		cfg := m.com.Config()
@@ -1878,6 +1909,15 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 			}
 			cmds = append(cmds, util.ReportInfo("Yolo mode "+status))
 			return true
+		case key.Matches(msg, m.keyMap.ShellMode):
+			m.shellMode = !m.shellMode
+			m.setEditorPrompt(m.com.Workspace.PermissionSkipRequests())
+			status := "disabled"
+			if m.shellMode {
+				status = "enabled"
+			}
+			cmds = append(cmds, util.ReportInfo("Shell mode "+status))
+			return true
 		}
 		return false
 	}
@@ -1976,6 +2016,18 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				value = strings.TrimSpace(value)
 				if value == "exit" || value == "quit" {
 					return m.openQuitDialog()
+				}
+
+				if command, ok := strings.CutPrefix(value, "!"); ok && command != "" {
+					m.randomizePlaceholders()
+					m.historyReset()
+					return tea.Batch(m.runShellCommand(command), m.loadPromptHistory())
+				}
+
+				if m.shellMode && value != "" {
+					m.randomizePlaceholders()
+					m.historyReset()
+					return tea.Batch(m.runShellCommand(value), m.loadPromptHistory())
 				}
 
 				attachments := m.attachments.List()
@@ -2433,6 +2485,7 @@ func (m *UI) ShortHelp() []key.Binding {
 		binds,
 		k.Quit,
 		k.Help,
+		k.ShellMode,
 	)
 
 	return binds
@@ -2484,6 +2537,7 @@ func (m *UI) FullHelp() [][]key.Binding {
 			k.Models,
 			k.Sessions,
 			k.ToggleYolo,
+			k.ShellMode,
 		)
 		if hasSession {
 			mainBinds = append(mainBinds, k.Chat.NewSession)
@@ -2948,13 +3002,16 @@ func (m *UI) openEditor(value string) tea.Cmd {
 }
 
 // setEditorPrompt configures the textarea prompt function based on whether
-// yolo mode is enabled.
+// yolo mode or shell mode is enabled.
 func (m *UI) setEditorPrompt(yolo bool) {
-	if yolo {
+	switch {
+	case yolo:
 		m.textarea.SetPromptFunc(4, m.yoloPromptFunc)
-		return
+	case m.shellMode:
+		m.textarea.SetPromptFunc(4, m.shellPromptFunc)
+	default:
+		m.textarea.SetPromptFunc(4, m.normalPromptFunc)
 	}
-	m.textarea.SetPromptFunc(4, m.normalPromptFunc)
 }
 
 // normalPromptFunc returns the normal editor prompt style ("  > " on first
@@ -2988,6 +3045,22 @@ func (m *UI) yoloPromptFunc(info textarea.PromptInfo) string {
 		return t.Editor.PromptYoloDotsFocused.Render()
 	}
 	return t.Editor.PromptYoloDotsBlurred.Render()
+}
+
+// shellPromptFunc returns the shell mode editor prompt style with a "$" icon
+// and colored dots.
+func (m *UI) shellPromptFunc(info textarea.PromptInfo) string {
+	t := m.com.Styles
+	if info.LineNumber == 0 {
+		if info.Focused {
+			return t.Editor.PromptShellIconFocused.Render()
+		}
+		return t.Editor.PromptShellIconBlurred.Render()
+	}
+	if info.Focused {
+		return t.Editor.PromptShellDotsFocused.Render()
+	}
+	return t.Editor.PromptShellDotsBlurred.Render()
 }
 
 // closeCompletions closes the completions popup and resets state.
@@ -3299,6 +3372,82 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 		return nil
 	})
 	return tea.Batch(cmds...)
+}
+
+// runShellCommand creates a bash tool call in the chat and executes the
+// command. The tool call is purely in-memory so it won't be sent to the LLM.
+func (m *UI) runShellCommand(command string) tea.Cmd {
+	if !m.hasSession() {
+		return util.ReportError(fmt.Errorf("no active session"))
+	}
+
+	toolCallID := fmt.Sprintf("shell_%d", time.Now().UnixNano())
+	input, _ := json.Marshal(agenttools.BashParams{
+		Command: command,
+	})
+
+	tc := message.ToolCall{
+		ID:       toolCallID,
+		Name:     "bash",
+		Input:    string(input),
+		Finished: false,
+	}
+
+	item := chat.NewBashToolMessageItem(m.com.Styles, tc, nil, false)
+	m.chat.AppendMessages(item)
+	var cmds []tea.Cmd
+	if animatable, ok := item.(chat.Animatable); ok {
+		if cmd := animatable.StartAnimation(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	cmds = append(cmds, m.runShellExecution(command, toolCallID))
+	return tea.Batch(cmds...)
+}
+
+// runShellExecution executes a shell command and returns the result.
+func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
+	workingDir := m.com.Workspace.WorkingDir()
+
+	return func() tea.Msg {
+		var stdout, stderr bytes.Buffer
+		runErr := shell.Run(context.Background(), shell.RunOptions{
+			Command: command,
+			Cwd:     workingDir,
+			Env:     os.Environ(),
+			Stdout:  &stdout,
+			Stderr:  &stderr,
+		})
+
+		exitCode := 0
+		if runErr != nil {
+			exitCode = shell.ExitCode(runErr)
+		}
+
+		output := stdout.String()
+		if stderr.Len() > 0 {
+			if output != "" {
+				output += "\n"
+			}
+			output += stderr.String()
+		}
+		output = strings.TrimRight(output, "\n")
+
+		return shellCmdCompleteMsg{
+			toolCallID: toolCallID,
+			command:    command,
+			output:     output,
+			exitCode:   exitCode,
+		}
+	}
+}
+
+// shellCmdCompleteMsg is sent when a shell command finishes executing.
+type shellCmdCompleteMsg struct {
+	toolCallID string
+	command    string
+	output     string
+	exitCode   int
 }
 
 const cancelTimerDuration = 2 * time.Second

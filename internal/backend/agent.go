@@ -238,3 +238,4 @@ func (b *Backend) GetDefaultSmallModel(workspaceID, providerID string) (config.S
 
 	return ws.GetDefaultSmallModel(providerID), nil
 }
+

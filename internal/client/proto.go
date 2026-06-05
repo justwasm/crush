@@ -374,7 +374,6 @@ func (c *Client) ClearAgentSessionQueuedPrompts(ctx context.Context, id string, 
 	}
 	return nil
 }
-
 // GetAgentInfo retrieves the agent status for a workspace.
 func (c *Client) GetAgentInfo(ctx context.Context, id string) (*proto.AgentInfo, error) {
 	rsp, err := c.get(ctx, fmt.Sprintf("/workspaces/%s/agent", id), nil, nil)
