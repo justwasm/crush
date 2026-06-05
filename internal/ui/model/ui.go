@@ -3524,7 +3524,7 @@ func (m *UI) persistBashCommand(msg bashCmdCompleteMsg, sessionID string) tea.Cm
 		if _, err := m.com.Workspace.CreateMessage(ctx, sessionID, message.CreateMessageParams{
 			Role: message.User,
 			Parts: []message.ContentPart{
-				message.TextContent{Text: fmt.Sprintf("$ %s", msg.command)},
+				message.TextContent{Text: msg.command},
 				message.ToolCall{
 					ID:       msg.toolCallID,
 					Name:     "bash",
