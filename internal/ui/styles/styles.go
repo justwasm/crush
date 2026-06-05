@@ -124,7 +124,7 @@ type Styles struct {
 		PromptYoloDotsFocused lipgloss.Style
 		PromptYoloDotsBlurred lipgloss.Style
 
-		// Shell mode prompt (" $ " icon + "... " dots).
+		// Bash mode prompt (" $ " icon + "..." dots).
 		PromptShellIconFocused lipgloss.Style
 		PromptShellIconBlurred lipgloss.Style
 		PromptShellDotsFocused lipgloss.Style

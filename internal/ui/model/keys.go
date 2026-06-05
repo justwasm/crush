@@ -65,7 +65,7 @@ type KeyMap struct {
 	Sessions   key.Binding
 	Tab        key.Binding
 	ToggleYolo key.Binding
-	ShellMode key.Binding
+	BashMode   key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -102,7 +102,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("ctrl+y"),
 			key.WithHelp("ctrl+y", "toggle yolo"),
 		),
-		ShellMode: key.NewBinding(),
+		BashMode: key.NewBinding(),
 	}
 
 	km.Editor.AddFile = key.NewBinding(

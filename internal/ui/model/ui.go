@@ -255,14 +255,14 @@ type UI struct {
 	// forceCompactMode tracks whether compact mode is forced by user toggle
 	forceCompactMode bool
 
-	// shellMode tracks whether the editor is in shell mode, where input is
-	// treated as a shell command instead of an LLM prompt.
-	shellMode bool
+	// bashMode tracks whether the editor is in bash mode, where input is
+	// treated as a bash command instead of an LLM prompt.
+	bashMode bool
 
-	// shellCancel cancels the currently running shell command (if any).
-	// Set by runShellExecution, called by ESC key handling.
-	shellCancel   context.CancelFunc
-	shellCancelID string
+	// bashCancel cancels the currently running bash command (if any).
+	// Set by runBashExecution, called by ESC key handling.
+	bashCancel   context.CancelFunc
+	bashCancelID string
 
 	// isCompact tracks whether we're currently in compact layout mode (either
 	// by user toggle or auto-switch based on window size)
@@ -960,12 +960,12 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ttl = DefaultStatusTTL
 		}
 		cmds = append(cmds, clearInfoMsgCmd(ttl))
-	case shellCmdCompleteMsg:
-		// Persist to session DB so shell commands survive reloads and
+	case bashCmdCompleteMsg:
+		// Persist to session DB so bash commands survive reloads and
 		// appear in the LLM context on follow-up prompts.
 		// Capture session ID now — the cmd runs async and m.session may
 		// change before it executes.
-		cmds = append(cmds, m.persistShellCommand(msg, m.session.ID))
+		cmds = append(cmds, m.persistBashCommand(msg, m.session.ID))
 
 		// Remove the in-memory tool call item — the persisted messages
 		// (rendered via pubsub subscription) will replace it.
@@ -1015,8 +1015,8 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.com.Workspace.PermissionSkipRequests() {
 			m.textarea.Placeholder = "Yolo mode!"
 		}
-		if m.shellMode {
-			m.textarea.Placeholder = "Shell mode!"
+		if m.bashMode {
+			m.textarea.Placeholder = "Bash mode!"
 		}
 	}
 
@@ -1442,8 +1442,8 @@ func (m *UI) handleDialogMsg(msg tea.Msg) tea.Cmd {
 		m.com.Workspace.PermissionSetSkipRequests(yolo)
 		m.setEditorPrompt(yolo)
 		m.dialog.CloseDialog(dialog.CommandsID)
-	case dialog.ActionToggleShellMode:
-		m.shellMode = !m.shellMode
+	case dialog.ActionToggleBashMode:
+		m.bashMode = !m.bashMode
 		m.setEditorPrompt(m.com.Workspace.PermissionSkipRequests())
 		m.dialog.CloseDialog(dialog.CommandsID)
 	case dialog.ActionSelectNotificationStyle:
@@ -1907,14 +1907,14 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 			}
 			cmds = append(cmds, util.ReportInfo("Yolo mode "+status))
 			return true
-		case key.Matches(msg, m.keyMap.ShellMode):
-			m.shellMode = !m.shellMode
+		case key.Matches(msg, m.keyMap.BashMode):
+			m.bashMode = !m.bashMode
 			m.setEditorPrompt(m.com.Workspace.PermissionSkipRequests())
 			status := "disabled"
-			if m.shellMode {
+			if m.bashMode {
 				status = "enabled"
 			}
-			cmds = append(cmds, util.ReportInfo("Shell mode "+status))
+			cmds = append(cmds, util.ReportInfo("Bash mode "+status))
 			return true
 		}
 		return false
@@ -2019,13 +2019,13 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				if command, ok := strings.CutPrefix(value, "!"); ok && command != "" {
 					m.randomizePlaceholders()
 					m.historyReset()
-					return tea.Batch(m.runShellCommand(command), m.loadPromptHistory())
+					return tea.Batch(m.runBashCommand(command), m.loadPromptHistory())
 				}
 
-				if m.shellMode && value != "" {
+				if m.bashMode && value != "" {
 					m.randomizePlaceholders()
 					m.historyReset()
-					return tea.Batch(m.runShellCommand(value), m.loadPromptHistory())
+					return tea.Batch(m.runBashCommand(value), m.loadPromptHistory())
 				}
 
 				attachments := m.attachments.List()
@@ -2078,12 +2078,12 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 					cmds = append(cmds, cmd)
 				}
 			case key.Matches(msg, m.keyMap.Editor.Escape):
-				// If a shell command is running, cancel it first.
-				if m.shellCancel != nil {
-					m.shellCancel()
-					m.shellCancel = nil
-					m.shellCancelID = ""
-					status := "Shell command cancelled"
+				// If a bash command is running, cancel it first.
+				if m.bashCancel != nil {
+					m.bashCancel()
+					m.bashCancel = nil
+					m.bashCancelID = ""
+					status := "Bash command cancelled"
 					cmds = append(cmds, util.ReportInfo(status))
 					break
 				}
@@ -2492,7 +2492,7 @@ func (m *UI) ShortHelp() []key.Binding {
 		binds,
 		k.Quit,
 		k.Help,
-		k.ShellMode,
+		k.BashMode,
 	)
 
 	return binds
@@ -2544,7 +2544,7 @@ func (m *UI) FullHelp() [][]key.Binding {
 			k.Models,
 			k.Sessions,
 			k.ToggleYolo,
-			k.ShellMode,
+			k.BashMode,
 		)
 		if hasSession {
 			mainBinds = append(mainBinds, k.Chat.NewSession)
@@ -3009,13 +3009,13 @@ func (m *UI) openEditor(value string) tea.Cmd {
 }
 
 // setEditorPrompt configures the textarea prompt function based on whether
-// yolo mode or shell mode is enabled.
+// yolo mode or bash mode is enabled.
 func (m *UI) setEditorPrompt(yolo bool) {
 	switch {
 	case yolo:
 		m.textarea.SetPromptFunc(4, m.yoloPromptFunc)
-	case m.shellMode:
-		m.textarea.SetPromptFunc(4, m.shellPromptFunc)
+	case m.bashMode:
+		m.textarea.SetPromptFunc(4, m.bashPromptFunc)
 	default:
 		m.textarea.SetPromptFunc(4, m.normalPromptFunc)
 	}
@@ -3054,9 +3054,9 @@ func (m *UI) yoloPromptFunc(info textarea.PromptInfo) string {
 	return t.Editor.PromptYoloDotsBlurred.Render()
 }
 
-// shellPromptFunc returns the shell mode editor prompt style with a "$" icon
+// bashPromptFunc returns the bash mode editor prompt style with a "$" icon
 // and colored dots.
-func (m *UI) shellPromptFunc(info textarea.PromptInfo) string {
+func (m *UI) bashPromptFunc(info textarea.PromptInfo) string {
 	t := m.com.Styles
 	if info.LineNumber == 0 {
 		if info.Focused {
@@ -3381,10 +3381,10 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 	return tea.Batch(cmds...)
 }
 
-// runShellCommand creates a bash tool call in the chat and executes the
+// runBashCommand creates a bash tool call in the chat and executes the
 // command. The command and output are persisted to the session DB so they
 // survive reloads and appear in the LLM context on follow-up prompts.
-func (m *UI) runShellCommand(command string) tea.Cmd {
+func (m *UI) runBashCommand(command string) tea.Cmd {
 	var cmds []tea.Cmd
 	if !m.hasSession() {
 		if !m.com.Workspace.AgentIsReady() {
@@ -3424,23 +3424,23 @@ func (m *UI) runShellCommand(command string) tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	}
-	cmds = append(cmds, m.runShellExecution(command, toolCallID))
+	cmds = append(cmds, m.runBashExecution(command, toolCallID))
 	return tea.Batch(cmds...)
 }
 
-// runShellExecution executes a shell command and returns the result.
-func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
+// runBashExecution executes a bash command and returns the result.
+func (m *UI) runBashExecution(command, toolCallID string) tea.Cmd {
 	workingDir := m.com.Workspace.WorkingDir()
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithCancel(context.Background())
-		m.shellCancel = cancel
-		m.shellCancelID = toolCallID
+		m.bashCancel = cancel
+		m.bashCancelID = toolCallID
 		defer func() {
 			cancel()
-			if m.shellCancelID == toolCallID {
-				m.shellCancel = nil
-				m.shellCancelID = ""
+			if m.bashCancelID == toolCallID {
+				m.bashCancel = nil
+				m.bashCancelID = ""
 			}
 		}()
 
@@ -3471,7 +3471,7 @@ func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
 		}
 		output = strings.TrimRight(output, "\n")
 
-		return shellCmdCompleteMsg{
+		return bashCmdCompleteMsg{
 			toolCallID: toolCallID,
 			command:    command,
 			output:     output,
@@ -3481,8 +3481,8 @@ func (m *UI) runShellExecution(command, toolCallID string) tea.Cmd {
 	}
 }
 
-// shellCmdCompleteMsg is sent when a shell command finishes executing.
-type shellCmdCompleteMsg struct {
+// bashCmdCompleteMsg is sent when a bash command finishes executing.
+type bashCmdCompleteMsg struct {
 	toolCallID string
 	command    string
 	output     string
@@ -3490,12 +3490,12 @@ type shellCmdCompleteMsg struct {
 	cancelled  bool
 }
 
-// persistShellCommand persists the shell command and its output as a single
+// persistBashCommand persists the bash command and its output as a single
 // user message containing the text, tool call, and tool result, so they
 // survive session reloads and render with the nice bash tool call styling.
 // sessionID must be captured at call time — the cmd runs async and m.session
 // may change before it executes.
-func (m *UI) persistShellCommand(msg shellCmdCompleteMsg, sessionID string) tea.Cmd {
+func (m *UI) persistBashCommand(msg bashCmdCompleteMsg, sessionID string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -3530,7 +3530,7 @@ func (m *UI) persistShellCommand(msg shellCmdCompleteMsg, sessionID string) tea.
 				},
 			},
 		}); err != nil {
-			slog.Error("Failed to persist shell command",
+			slog.Error("Failed to persist bash command",
 				"error", err, "session", sessionID)
 		}
 		return nil
