@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"runtime"
 
-	_ "github.com/ozanturksever/sqlite3-vfs-idb"
+	_ "github.com/justwasm/sqlite3-vfs-idb"
 	"github.com/ncruces/go-sqlite3"
 	"github.com/ncruces/go-sqlite3/driver"
 )
