@@ -5,7 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -43,11 +42,6 @@ func Setup(logFile string, debug bool, ws ...io.Writer) {
 
 		var handlers []slog.Handler
 		handlers = append(handlers, slog.NewJSONHandler(logRotator, opts))
-
-		if runtime.GOOS == "js" {
-			// In js/wasm, os.Stdout is mapped to console.log by the Go runtime.
-			handlers = append(handlers, slog.NewTextHandler(os.Stdout, opts))
-		}
 
 		for _, w := range ws {
 			if w == nil {
