@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/gh/justwasm/wanix@exec/dist/wanix.min.js"
+    ></script>
+  </head>
+  <body style="height: 100vh; margin: 0">
+    <!-- a wanix system is an empty root task/namespace -->
+    <wanix-system
+      wasm="https://w9y.up.railway.app/go/github.com/justwasm/wanix/wasm@exec"
+      debug
+    >
+      <!-- bind the task, term, and web namespaces to the system -->
+      <wanix-bind dst="task" src="#task"></wanix-bind>
+      <wanix-bind dst="term" src="#term"></wanix-bind>
+      <wanix-bind dst="web" src="#web"></wanix-bind>
+      <wanix-bind dst="js" src="#js"></wanix-bind>
+      <wanix-bind dst="crush" src="#web/opfs"></wanix-bind>
+      <wanix-bind dst="tmp" src="#ramfs"></wanix-bind>
+
+      <!-- fetch hush wasm into the namespace -->
+      <wanix-bind
+        type="fetch"
+        dst="hush"
+        src="https://w9y.up.railway.app/go/github.com/btwiuse/hush/cmd/hush@main"
+        mode="0755"
+      ></wanix-bind>
+
+      <wanix-bind
+        type="fetch"
+        dst="crush.wasm"
+        src="./crush.wasm"
+        mode="0755"
+      ></wanix-bind>
+
+      <!-- run bubbletea as gojs task with TERM_WINCH pointing to term's winch file -->
+      <wanix-task
+        id="repl"
+        cmd="hush"
+        type="gojs"
+        env="WANIX=1 TERM=xterm-256color COLORTERM=truecolor CLICOLOR_FORCE=1 HOME=/crush PATH=/ CRUSH_CORE_UTILS=1 DO_NOT_TRACK=1 TERM_WINCH=/winch"
+        term
+        start
+      >
+        <wanix-bind dst="winch" src="#task/self/term/winch"></wanix-bind>
+      </wanix-task>
+
+      <!-- render the terminal for the repl -->
+      <wanix-term raw no-scrollbar path="#task/repl/term"></wanix-term>
+    </wanix-system>
+  </body>
+</html>
