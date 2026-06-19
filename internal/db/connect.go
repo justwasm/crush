@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -91,6 +92,9 @@ func Connect(ctx context.Context, dataDir string, opts ...ConnectOption) (*sql.D
 	}
 
 	dbPath := filepath.Join(dataDir, "crush.db")
+	if runtime.GOOS == "js" {
+		dbPath = "crush.db"
+	}
 
 	// Resolve to an absolute path so that different relative paths to
 	// the same file share a single connection.
