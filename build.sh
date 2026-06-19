@@ -30,6 +30,11 @@ time env GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o ./build/crus
 
 ### bundle assets
 
+mkdir -p ./build/dist
+if ! [[ -f ./build/dist/${TAG}.js-wasm.min.tar.gz ]]; then
+  curl -sL https://github.com/justwasm/go/releases/download/${TAG}/${TAG}.js-wasm.min.tar.gz > ./build/dist/${TAG}.js-wasm.min.tar.gz
+fi
+
 curl -sL http://btwiuse.github.io/hackpad/wasm/init.wasm > ./build/init.wasm
 
 cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./assets
