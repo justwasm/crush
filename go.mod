@@ -2,6 +2,10 @@ module github.com/charmbracelet/crush
 
 go 1.26.4
 
+replace github.com/atotto/clipboard => github.com/justwasm/clipboard v0.1.6
+
+replace charm.land/bubbletea/v2 => github.com/bubbletui/bubbletea/v2 v2.0.9
+
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.7
