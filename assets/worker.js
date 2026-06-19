@@ -132,7 +132,7 @@ try {
     // Wait until go-booba registers the JS bridge globals
     await new Promise((resolve) => {
       self.addEventListener("bubbletea-ready", resolve, { once: true })
-      self.child_process.spawn(mainPath.replace(/\.wasm$/, ''))
+      self.child_process.spawn(mainPath.split('/').pop()?.replace(/\.wasm$/, ''))
     })
 
   } catch (e) {
