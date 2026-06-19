@@ -40,6 +40,7 @@ curl -sL http://btwiuse.github.io/hackpad/wasm/init.wasm > ./build/init.wasm
 cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./assets
 
 cp ./assets/index.html ./build/index.html
+cp ./assets/wanix.html ./build/wanix.html
 cp ./assets/main.js ./build/main.js
 cp ./assets/worker.js ./build/worker.js
 cat ./assets/wasm_exec.js ./assets/wasm_exec.esm-wrapper.js > ./build/wasm_exec.esm.js
