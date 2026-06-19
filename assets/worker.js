@@ -116,7 +116,7 @@ try {
     await hackpad.overlayIndexedDB('/home/me/.cache', {cache: true})
 
     await mkdir("/go", {recursive: true, mode: 0o700})
-    await hackpad.overlayTarGzip('/go', '/dist/go1.27.0-justwasm.9.js-wasm.min.tar.gz', {
+    await hackpad.overlayTarGzip('/go', '/dist/go1.27.0-go4js.1.js-wasm.min.tar.gz', {
       persist: true,
       skipCacheDirs: [
         '/go/go/bin',
