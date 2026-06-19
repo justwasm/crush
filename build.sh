@@ -19,11 +19,14 @@ export PATH="$GOGO/go/bin:$PATH"
 
 which go
 
+go version
+
 ### build crush.wasm
 
 go mod tidy
 
-go run github.com/justwasm/boba/cmd/boba-wasm-build -o ./build/crush.wasm .
+# time go run github.com/justwasm/boba/cmd/boba-wasm-build -o ./build/crush.wasm .
+time env GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o ./build/crush.wasm .
 
 ### bundle assets
 
