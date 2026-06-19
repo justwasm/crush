@@ -78,7 +78,7 @@ try {
   const go = new Go();
   go.env = {
       'CRUSH_DISABLE_PROVIDER_AUTO_UPDATE': '1',
-      'CRUSH_VERSION': 'v0.75.0',
+      'CRUSH_VERSION': 'v0.77.0',
       'CRUSH_CORE_UTILS': '1',
       'CRUSH_CORS_PROXY': 'https://wstack.up.railway.app/',
       'POSTHOG_ENDPOINT': 'https://us.i.posthog.com',
