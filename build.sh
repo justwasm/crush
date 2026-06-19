@@ -9,7 +9,7 @@ GOGO=/tmp/go-toolchain
 
 if ! [[ -d "$GOGO/go" ]]; then
   mkdir -p "$GOGO/go"
-  TAG=go1.27.0-justwasm.9
+  TAG=go1.27.0-go4js.1
   host=$(go env GOHOSTOS)
   arch=$(go env GOHOSTARCH)
   curl -sL "https://github.com/justwasm/go/releases/download/${TAG}/${TAG}.${host}-${arch}.min.tar.gz" | tar -xzC "$GOGO"
