@@ -6,6 +6,8 @@ replace github.com/atotto/clipboard => github.com/justwasm/clipboard v0.1.6
 
 replace charm.land/bubbletea/v2 => github.com/bubbletui/bubbletea/v2 v2.0.11
 
+replace github.com/tursodatabase/libsql-client-go => github.com/justwasm/libsql-client-go v0.0.0-20260623175834-e56250431353
+
 require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.0.9
