@@ -130,7 +130,7 @@ func Connect(ctx context.Context, dataDir string, opts ...ConnectOption) (*sql.D
 		}
 	}
 
-	conn, err := openDB(dbPath)
+	conn, err := OpenDB(dbPath)
 	if err != nil {
 		if lock != nil {
 			lock.release()
