@@ -17,6 +17,10 @@ const (
 	fallbackId = "unknown"
 )
 
+func ID() string {
+	return getDistinctId()
+}
+
 func getDistinctId() string {
 	if id, err := machineid.ProtectedID(hashKey); err == nil {
 		return id
