@@ -1,5 +1,4 @@
 -- +goose Up
--- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS read_files (
     session_id TEXT NOT NULL CHECK (session_id != ''),
     path TEXT NOT NULL CHECK (path != ''),
@@ -10,11 +9,8 @@ CREATE TABLE IF NOT EXISTS read_files (
 
 CREATE INDEX IF NOT EXISTS idx_read_files_session_id ON read_files (session_id);
 CREATE INDEX IF NOT EXISTS idx_read_files_path ON read_files (path);
--- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
 DROP INDEX IF EXISTS idx_read_files_path;
 DROP INDEX IF EXISTS idx_read_files_session_id;
 DROP TABLE IF EXISTS read_files;
--- +goose StatementEnd
