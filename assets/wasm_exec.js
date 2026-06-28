@@ -240,11 +240,19 @@
 						sp >>>= 0;
 						const code = this.mem.getInt32(sp + 8, true);
 						this.exited = true;
+						// Clear all pending timeouts to prevent
+						// scheduleTimeoutEvent's infinite retry loop
+						for (const t of this._scheduledTimeouts.values()) {
+							clearTimeout(t);
+						}
+						this._scheduledTimeouts.clear();
+						this._pendingEvent = null;
 						delete this._inst;
 						delete this._values;
 						delete this._goRefCounts;
 						delete this._ids;
 						delete this._idPool;
+						this._scheduledTimeouts = new Map();
 						this.exit(code);
 					},
 
@@ -284,6 +292,10 @@
 						this._nextCallbackTimeoutID++;
 						this._scheduledTimeouts.set(id, setTimeout(
 							() => {
+								if (this.exited) {
+									this._scheduledTimeouts.delete(id);
+									return;
+								}
 								this._resume();
 								while (this._scheduledTimeouts.has(id)) {
 									// for some reason Go failed to register the timeout event, log and try again
@@ -556,7 +568,8 @@
 
 		_resume() {
 			if (this.exited) {
-				throw new Error("Go program has already exited");
+				console.warn("Go program has already exited: resume suppressed");
+				return;
 			}
 			this._inst.exports.resume();
 			if (this.exited) {
