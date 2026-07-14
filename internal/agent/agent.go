@@ -1497,14 +1497,10 @@ func (a *sessionAgent) getCacheControlOptions() fantasy.ProviderOptions {
 // sessionHeaders returns the HTTP headers we use for cache affinity on
 // every LLM request for a given session.
 //
-// We use the session hash is used instead of the raw UUID so the header
-// value is deterministic and opaque.
+// We use the session hash instead of the raw UUID so the header value is
+// deterministic and opaque.
 func sessionHeaders(sessionID string) map[string]string {
-	hash := session.HashID(sessionID)
-	return map[string]string{
-		"x-session-id":       hash,
-		"x-session-affinity": hash,
-	}
+	return map[string]string{}
 }
 
 func (a *sessionAgent) createUserMessage(ctx context.Context, call SessionAgentCall) (message.Message, error) {
