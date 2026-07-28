@@ -42,6 +42,9 @@ cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./assets
 
 cp ./assets/index.html ./build/index.html
 cp ./assets/wanix.html ./build/wanix.html
+cp ./assets/manifest.json ./build/manifest.json
+cp ./assets/crush-icon-192.png ./build/crush-icon-192.png
+cp ./assets/crush-icon-512.png ./build/crush-icon-512.png
 cp ./assets/main.js ./build/main.js
 cp ./assets/worker.js ./build/worker.js
 cat ./assets/wasm_exec.js ./assets/wasm_exec.esm-wrapper.js > ./build/wasm_exec.esm.js
