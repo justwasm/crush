@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "Crush",
+  "short_name": "Crush",
+  "start_url": "./",
+  "scope": "./",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "display": "standalone",
+  "background_color": "#1e1e1e",
+  "theme_color": "#1e1e1e",
+  "icons": [
+    {
+      "src": "crush-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "crush-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
