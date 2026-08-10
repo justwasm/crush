@@ -18,7 +18,7 @@ func TestAtomicWriteFile(t *testing.T) {
 
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
-	require.Equal(t, `{"key":"value"}`, string(data))
+	require.Equal(t, pretty(`{"key":"value"}`), string(data))
 
 	// No temp files should linger.
 	entries, err := os.ReadDir(dir)
