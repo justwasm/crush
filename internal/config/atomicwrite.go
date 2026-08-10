@@ -10,6 +10,8 @@ import (
 // temporary file in the same directory and renaming it into place. This
 // prevents concurrent readers from observing a partially-written file.
 func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	data = autoJSON(path, data)
+
 	path = filepath.Clean(path)
 	dir := filepath.Dir(path)
 	f, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
