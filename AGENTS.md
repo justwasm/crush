@@ -232,3 +232,17 @@ func CharmtonePantera() Styles {
 **Adding a new theme**: Add a function in `themes.go` that returns the
 result of `quickStyle` with a `quickStyleOpts` palette (plus any needed
 overrides), then wire it into `ThemeForProvider`.
+
+## Memory & companion wiki
+
+- Reusable development notes live in `memory/` (one Markdown file per topic,
+  `Home.md` as the index, auto-loaded each session via `option
+  context-path memory/Home.md` in `.crushrc`).
+- `memory/` is a git submodule whose remote is the wiki repo
+  `justwasm/crush.wiki`; `scripts/sync-wiki.sh` publishes it (README.md →
+  Home.md, everything else verbatim).
+- 适时地 document findings to `./memory`,每个主题一个文件,并维护
+  `Home.md` 索引;consolidate 可复用信息供未来的会话参考。
+- After editing `memory/`, run `scripts/sync-wiki.sh` to publish, then
+  `git submodule update --remote memory` locally to advance the pointer.
+
