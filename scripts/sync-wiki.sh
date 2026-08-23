@@ -4,8 +4,7 @@
 # What it does:
 #   1. Clones the wiki repo into $WORK_DIR
 #   2. Copies every file under memory/ verbatim into the wiki working tree
-#   3. Renames memory/README.md -> Home.md so it lands on the wiki front page
-#   4. Pushes the result
+#   3. Pushes the result
 #
 # What it does NOT do:
 #   - It does not rewrite memory/ in the main repo.
@@ -15,13 +14,13 @@
 #   scripts/sync-wiki.sh [<main-repo-path>]
 #
 # Env overrides:
-#   WIKI_REPO  default: git@github.com:justwasm/crush.wiki.git
+#   WIKI_REPO  default: https://github.com/justwasm/crush.wiki.git
 #   WIKI_BRANCH default: master
 set -euo pipefail
 
 MAIN_REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 MAIN_REPO="$(cd "$MAIN_REPO" && pwd)"
-WIKI_REPO="${WIKI_REPO:-git@github.com:justwasm/crush.wiki.git}"
+WIKI_REPO="${WIKI_REPO:-https://github.com/justwasm/crush.wiki.git}"
 WIKI_BRANCH="${WIKI_BRANCH:-master}"
 
 if [[ ! -d "$MAIN_REPO/memory" ]]; then
@@ -39,7 +38,7 @@ cd "$WORK_DIR/wiki"
 git config user.email "crush@btwiuse.local"
 git config user.name "Crush"
 
-echo "Copying memory/ -> wiki working tree (README.md -> Home.md) ..."
+echo "Copying memory/ -> wiki working tree ..."
 # Clear any leftover files from the previous sync (except .git).
 find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
@@ -50,13 +49,7 @@ if [[ ${#items[@]} -eq 0 ]]; then
   exit 1
 fi
 for src in "${items[@]}"; do
-  name="$(basename "$src")"
-  if [[ "$name" == "README.md" ]]; then
-    # Publish as the wiki front page (Home.md). README.md is not mirrored.
-    cp "$src" ./Home.md
-  else
-    cp "$src" "./$name"
-  fi
+  cp "$src" "./$(basename "$src")"
 done
 unset items
 
