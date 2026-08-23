@@ -4,7 +4,7 @@ set -euo pipefail
 
 ### setup go
 
-TAG=go1.27.0-go4js.1
+TAG=go1.27.0-go4js.2
 
 GOGO=/tmp/go-toolchain
 # GOGO=../hackpad/cache
