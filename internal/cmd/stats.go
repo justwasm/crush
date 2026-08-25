@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"os/user"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -194,11 +193,7 @@ func runStats(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("no data available: no sessions found in database")
 	}
 
-	currentUser, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
-	}
-	username := currentUser.Username
+	username, homeDir := resolveCurrentUser()
 
 	var projName string
 	switch {
@@ -211,7 +206,7 @@ func runStats(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
 		}
-		projName = strings.Replace(project, currentUser.HomeDir, "~", 1)
+		projName = strings.Replace(project, homeDir, "~", 1)
 	}
 
 	outputDataDir := dataDir
