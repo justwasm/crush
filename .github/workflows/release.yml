@@ -103,8 +103,7 @@ jobs:
           cp -R "$raw_staging/." "dist/$dist_staging/"
 
           if [ "$GOOS" = "windows" ]; then
-            (cd dist && powershell -NoProfile -Command \
-              "Compress-Archive -Force '$dist_staging' '$archive'")
+            (cd dist && zip -r -q "$archive" "$dist_staging")
           else
             tar -C dist -czf "dist/$archive" "$dist_staging"
           fi
