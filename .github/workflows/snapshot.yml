@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - wasm
 
 permissions:
   contents: read
@@ -14,9 +15,7 @@ concurrency:
 
 jobs:
   snapshot:
-    runs-on:
-      # Use our own large runners with more CPU and RAM for faster builds
-      group: releasers
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,11 +23,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: "^1.27"
+          cache: true
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: "nightly"
-          distribution: goreleaser-pro
+          distribution: goreleaser
+          version: latest
           args: build --snapshot --clean
-        env:
-          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          retention-days: 7
+          name: dist-snapshot
+          path: dist/*
