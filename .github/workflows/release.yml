@@ -21,11 +21,7 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # Build every binary on a parallel runner. Each entry uploads:
-  #   bin-raw-<goos>-<goarch><goarm>     -> crush binary + distro files
   #   bin-archive-<goos>-<goarch><goarm> -> user-facing tarball/zip
-  # linux/amd64 also uploads distro-files (man + completions) for the other
-  # matrix entries to bundle; cross-compiled binaries cannot run on the runner
-  # that produced them, so we generate distro files once on the host arch.
   # ---------------------------------------------------------------------------
   binary:
     name: ${{ matrix.goos }}/${{ matrix.goarch }}${{ matrix.goarm }}
@@ -77,7 +73,6 @@ jobs:
           ext="tar.gz"; [ "${{ matrix.goos }}" = "windows" ] && ext="zip"
           archive="crush_${VERSION}_${os_title}_${raw}.${ext}"
           echo "raw=$raw"        >> "$GITHUB_OUTPUT"
-          echo "ext=$ext"        >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
       - name: Build binary
         env:
@@ -109,100 +104,8 @@ jobs:
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: bin-raw-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
-          path: stage-${{ steps.arch.outputs.raw }}/*
-          if-no-files-found: error
-          retention-days: 1
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
           name: bin-archive-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
           path: dist/${{ steps.arch.outputs.archive }}
-          if-no-files-found: error
-          retention-days: 7
-
-  # ---------------------------------------------------------------------------
-  # Linux packages via nfpm.
-  # ---------------------------------------------------------------------------
-  packages:
-    name: pkg-${{ matrix.format }}/${{ matrix.goarch }}${{ matrix.goarm }}
-    needs: binary
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { format: apk,       goarch: amd64, goarm: ""  }
-          - { format: apk,       goarch: arm64, goarm: ""  }
-          - { format: apk,       goarch: arm,   goarm: "7" }
-          - { format: apk,       goarch: "386", goarm: ""  }
-          - { format: deb,       goarch: amd64, goarm: ""  }
-          - { format: deb,       goarch: arm64, goarm: ""  }
-          - { format: deb,       goarch: arm,   goarm: "7" }
-          - { format: deb,       goarch: "386", goarm: ""  }
-          - { format: rpm,       goarch: amd64, goarm: ""  }
-          - { format: rpm,       goarch: arm64, goarm: ""  }
-          - { format: rpm,       goarch: arm,   goarm: "7" }
-          - { format: rpm,       goarch: "386", goarm: ""  }
-          - { format: archlinux, goarch: amd64, goarm: ""  }
-          - { format: archlinux, goarch: arm64, goarm: ""  }
-          - { format: archlinux, goarch: arm,   goarm: "7" }
-          - { format: archlinux, goarch: "386", goarm: ""  }
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: bin-raw-linux-${{ matrix.goarch }}${{ matrix.goarm }}
-          path: bin
-      - name: Install nfpm
-        run: |
-          url=$(curl -fsSL -w '%{url_effective}' -o /dev/null https://github.com/goreleaser/nfpm/releases/latest)
-          tag="${url##*/}"; tag="${tag#v}"
-          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${tag}/nfpm_${tag}_Linux_x86_64.tar.gz" \
-            | tar -xz -C /usr/local/bin nfpm
-          nfpm --version
-      - name: Build package
-        env:
-          FORMAT: ${{ matrix.format }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          set -euo pipefail
-          mkdir -p root/usr/bin \
-                   root/usr/share/doc/crush \
-                   root/usr/share/licenses/crush
-          case "$GOARCH" in
-            amd64) manifest_arch="amd64" ;;
-            arm64) manifest_arch="arm64" ;;
-            386)   manifest_arch="i386"  ;;
-            arm)   manifest_arch="arm7"  ;;
-          esac
-          mv bin/crush "root/usr/bin/crush"
-          chmod 0755 root/usr/bin/crush
-          mv bin/README.md         root/usr/share/doc/crush/README.md
-          mv bin/LICENSE.md        root/usr/share/licenses/crush/LICENSE.md
-          mkdir -p dist
-          nfpm pkg -p "$FORMAT" -t "dist/crush-${VERSION}.${FORMAT/.*/}" -f /dev/stdin <<EOF
-          name: crush
-          arch: ${manifest_arch}
-          platform: linux
-          version: ${VERSION#v}
-          section: utils
-          priority: optional
-          maintainer: justwasm <ops@justwasm.dev>
-          description: A powerful terminal-based AI assistant for developers.
-          homepage: https://github.com/justwasm/crush
-          license: FSL-1.1-MIT
-          contents:
-            - src: ./root/usr/bin/crush
-              dst: /usr/bin/crush
-            - src: ./root/usr/share/doc/crush/README.md
-              dst: /usr/share/doc/crush/README.md
-            - src: ./root/usr/share/licenses/crush/LICENSE.md
-              dst: /usr/share/licenses/crush/LICENSE.md
-          EOF
-          ls -la dist/
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: pkg-${{ matrix.format }}-${{ matrix.goarch }}${{ matrix.goarm }}
-          path: dist/*
           if-no-files-found: error
           retention-days: 7
 
@@ -231,7 +134,7 @@ jobs:
   # Release with the auto-generated release notes.
   # ---------------------------------------------------------------------------
   publish:
-    needs: [binary, packages, source]
+    needs: [binary, source]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
