@@ -57,11 +57,6 @@ jobs:
         with:
           go-version: "^1.27"
           cache: true
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: distro-files
-          path: distro
-        if: ${{ matrix.goos != 'linux' || matrix.goarch != 'amd64' }}
       - name: Compute archive suffix
         id: arch
         run: |
@@ -95,16 +90,6 @@ jobs:
           cp README.md  "$raw_staging/README.md"  2>/dev/null || true
           cp LICENSE.md "$raw_staging/LICENSE.md" 2>/dev/null || true
 
-          if [ "$GOOS" = "linux" ] && [ "$GOARCH" = "amd64" ]; then
-            mkdir -p distro
-            ./"$bin" man | gzip -c > distro/crush.1.gz
-            ./"$bin" completion bash > distro/crush.bash
-            ./"$bin" completion zsh  > distro/crush.zsh
-            ./"$bin" completion fish > distro/crush.fish
-          else
-            cp -R distro/. "$raw_staging/"
-          fi
-
           dist_staging="crush_${VERSION}_${{ steps.arch.outputs.raw }}"
           mkdir -p "dist/$dist_staging"
           cp -R "$raw_staging/." "dist/$dist_staging/"
@@ -115,13 +100,6 @@ jobs:
           else
             tar -C dist -czf "dist/$archive" "$dist_staging"
           fi
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: distro-files
-          path: distro/*
-          if-no-files-found: error
-          retention-days: 1
-        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: snapshot-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
