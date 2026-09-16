@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: goreleaser
+name: release
 
 on:
   push:
@@ -8,14 +8,51 @@ on:
       - v*.*.*
 
 concurrency:
-  group: goreleaser
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
   contents: write
 
+env:
+  VERSION: ${{ github.ref_name }}
+  LD_VERSION: -X github.com/charmbracelet/crush/internal/version.Version=${{ github.ref_name }}
+
 jobs:
-  goreleaser:
+  # ---------------------------------------------------------------------------
+  # Build every binary on a parallel runner. Each entry uploads two artifacts:
+  #   <os>-<arch>      -> crush binary + completions + manpage (for packaging)
+  #   <os>-<arch>-dist -> the user-facing archive (.tar.gz / .zip)
+  # ---------------------------------------------------------------------------
+  binary:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }}${{ matrix.goarm }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64,   goarm: ""    }
+          - { goos: linux,   goarch: arm64,   goarm: ""    }
+          - { goos: linux,   goarch: "386",   goarm: ""    }
+          - { goos: linux,   goarch: arm,     goarm: "7"   }
+          - { goos: linux,   goarch: riscv64, goarm: ""    }
+          - { goos: darwin,  goarch: amd64,   goarm: ""    }
+          - { goos: darwin,  goarch: arm64,   goarm: ""    }
+          - { goos: windows, goarch: amd64,   goarm: ""    }
+          - { goos: windows, goarch: arm64,   goarm: ""    }
+          - { goos: windows, goarch: "386",   goarm: ""    }
+          - { goos: freebsd, goarch: amd64,   goarm: ""    }
+          - { goos: freebsd, goarch: arm64,   goarm: ""    }
+          - { goos: freebsd, goarch: "386",   goarm: ""    }
+          - { goos: freebsd, goarch: arm,     goarm: "7"   }
+          - { goos: openbsd, goarch: amd64,   goarm: ""    }
+          - { goos: openbsd, goarch: arm64,   goarm: ""    }
+          - { goos: openbsd, goarch: "386",   goarm: ""    }
+          - { goos: openbsd, goarch: arm,     goarm: "7"   }
+          - { goos: netbsd,  goarch: amd64,   goarm: ""    }
+          - { goos: netbsd,  goarch: arm64,   goarm: ""    }
+          - { goos: netbsd,  goarch: "386",   goarm: ""    }
+          - { goos: netbsd,  goarch: arm,     goarm: "7"   }
+          - { goos: android, goarch: arm64,   goarm: ""    }
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -25,10 +62,223 @@ jobs:
         with:
           go-version: "^1.27"
           cache: true
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+      - name: Compute archive suffix
+        id: arch
+        run: |
+          raw="${{ matrix.goarch }}${{ matrix.goarm }}"
+          if   [ "${{ matrix.goarch }}" = "amd64" ]; then raw="x86_64"
+          elif [ "${{ matrix.goarch }}" = "386" ];   then raw="i386"
+          elif [ "${{ matrix.goarch }}" = "arm" ];   then raw="armv${{ matrix.goarm }}"
+          fi
+          os_title=$(echo "${{ matrix.goos }}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+          ext="tar.gz"; [ "${{ matrix.goos }}" = "windows" ] && ext="zip"
+          archive="crush_${VERSION}_${os_title}_${raw}.${ext}"
+          echo "raw=$raw"   >> "$GITHUB_OUTPUT"
+          echo "ext=$ext"   >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - name: Build binary
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+          GOEXPERIMENT: greenteagc
+        run: |
+          set -euo pipefail
+          raw_staging="stage-${{ steps.arch.outputs.raw }}"
+          archive="${{ steps.arch.outputs.archive }}"
+          mkdir -p "$raw_staging" dist
+          bin="$raw_staging/crush"
+          [ "$GOOS" = "windows" ] && bin="$raw_staging/crush.exe"
+          go build -trimpath -ldflags "-s -w $LD_VERSION" -o "$bin" .
+          chmod +x "$bin"
+          ./"$bin" man | gzip -c > "$raw_staging/crush.1.gz"
+          ./"$bin" completion bash > "$raw_staging/crush.bash"
+          ./"$bin" completion zsh  > "$raw_staging/crush.zsh"
+          ./"$bin" completion fish > "$raw_staging/crush.fish"
+          cp README.md  "$raw_staging/README.md"  2>/dev/null || true
+          cp LICENSE.md "$raw_staging/LICENSE.md" 2>/dev/null || true
+
+          dist_staging="crush_${VERSION}_${{ steps.arch.outputs.raw }}"
+          mkdir -p "dist/$dist_staging"
+          cp -R "$raw_staging/." "dist/$dist_staging/"
+
+          if [ "$GOOS" = "windows" ]; then
+            (cd dist && powershell -NoProfile -Command \
+              "Compress-Archive -Force '$dist_staging' '$archive'")
+          else
+            tar -C dist -czf "dist/$archive" "$dist_staging"
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bin-raw-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: stage-${{ steps.arch.outputs.raw }}/*
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bin-archive-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: dist/${{ steps.arch.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Package Linux binaries into apk / deb / rpm / archlinux via nfpm.
+  # ---------------------------------------------------------------------------
+  packages:
+    name: ${{ matrix.format }}/${{ matrix.goarch }}${{ matrix.goarm }}
+    needs: binary
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { format: apk,       goarch: amd64, goarm: ""  }
+          - { format: apk,       goarch: arm64, goarm: ""  }
+          - { format: apk,       goarch: arm,   goarm: "7" }
+          - { format: apk,       goarch: "386", goarm: ""  }
+          - { format: deb,       goarch: amd64, goarm: ""  }
+          - { format: deb,       goarch: arm64, goarm: ""  }
+          - { format: deb,       goarch: arm,   goarm: "7" }
+          - { format: deb,       goarch: "386", goarm: ""  }
+          - { format: rpm,       goarch: amd64, goarm: ""  }
+          - { format: rpm,       goarch: arm64, goarm: ""  }
+          - { format: rpm,       goarch: arm,   goarm: "7" }
+          - { format: rpm,       goarch: "386", goarm: ""  }
+          - { format: archlinux, goarch: amd64, goarm: ""  }
+          - { format: archlinux, goarch: arm64, goarm: ""  }
+          - { format: archlinux, goarch: arm,   goarm: "7" }
+          - { format: archlinux, goarch: "386", goarm: ""  }
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@3e5b1039e904a7a14f9c10b5e0117ec2b5f7bc68 # v8.0.1
+        with:
+          name: bin-raw-linux-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: bin
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "^1.27"
+          cache: true
+      - name: Install nfpm
+        run: |
+          curl -fsSL https://github.com/goreleaser/nfpm/releases/latest/download/nfpm_amd64.tar.gz \
+            | tar -xz -C /usr/local/bin nfpm
+          nfpm --version
+      - name: Build package
+        env:
+          FORMAT: ${{ matrix.format }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          mkdir -p root/usr/bin \
+                   root/usr/share/man/man1 \
+                   root/usr/share/bash-completion/completions \
+                   root/usr/share/zsh/site-functions \
+                   root/usr/share/fish/vendor_completions.d \
+                   root/usr/share/doc/crush \
+                   root/usr/share/licenses/crush
+          bin_name="crush"
+          [ "$GOARCH" = "arm" ] && manifest_arch="arm7"
+          case "$GOARCH" in
+            amd64) manifest_arch="amd64" ;;
+            arm64) manifest_arch="arm64" ;;
+            386)   manifest_arch="i386"  ;;
+            arm)   manifest_arch="arm7"  ;;
+          esac
+          mv bin/crush "root/usr/bin/crush"
+          chmod 0755 root/usr/bin/crush
+          mv bin/crush.1.gz        root/usr/share/man/man1/crush.1.gz
+          mv bin/crush.bash        root/usr/share/bash-completion/completions/crush
+          mv bin/crush.zsh         root/usr/share/zsh/site-functions/_crush
+          mv bin/crush.fish        root/usr/share/fish/vendor_completions.d/crush.fish
+          mv bin/README.md         root/usr/share/doc/crush/README.md
+          mv bin/LICENSE.md        root/usr/share/licenses/crush/LICENSE.md
+          mkdir -p dist
+          nfpm pkg -p "$FORMAT" -t "dist/crush-${VERSION}.${FORMAT/.*/}" -f /dev/stdin <<EOF
+          name: crush
+          arch: ${manifest_arch}
+          platform: linux
+          version: ${VERSION#v}
+          section: utils
+          priority: optional
+          maintainer: justwasm <ops@justwasm.dev>
+          description: A powerful terminal-based AI assistant for developers.
+          homepage: https://github.com/justwasm/crush
+          license: FSL-1.1-MIT
+          contents:
+            - src: ./root/usr/bin/crush
+              dst: /usr/bin/crush
+            - src: ./root/usr/share/man/man1/crush.1.gz
+              dst: /usr/share/man/man1/crush.1.gz
+            - src: ./root/usr/share/bash-completion/completions/crush
+              dst: /usr/share/bash-completion/completions/crush
+            - src: ./root/usr/share/zsh/site-functions/_crush
+              dst: /usr/share/zsh/site-functions/_crush
+            - src: ./root/usr/share/fish/vendor_completions.d/crush.fish
+              dst: /usr/share/fish/vendor_completions.d/crush.fish
+            - src: ./root/usr/share/doc/crush/README.md
+              dst: /usr/share/doc/crush/README.md
+            - src: ./root/usr/share/licenses/crush/LICENSE.md
+              dst: /usr/share/licenses/crush/LICENSE.md
+          EOF
+          ls -la dist/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pkg-${{ matrix.format }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Source tarball.
+  # ---------------------------------------------------------------------------
+  source:
+    needs: binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Tar source
+        run: |
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="crush-${VERSION}/" -o "dist/crush-${VERSION}.tar.gz" HEAD
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-archive
+          path: dist/*
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Finalizer: gather every artifact, build checksums, publish the GitHub
+  # Release with the auto-generated release notes.
+  # ---------------------------------------------------------------------------
+  publish:
+    needs: [binary, packages, source]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@3e5b1039e904a7a14f9c10b5e0117ec2b5f7bc68 # v8.0.1
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Build checksums.txt
+        working-directory: artifacts
+        run: |
+          find . -type f -print0 | sort -z \
+            | xargs -0 sha256sum > ../checksums.txt
+          cat ../checksums.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp checksums.txt artifacts/checksums.txt
+          cd artifacts
+          files=$(find . -type f | sort | sed 's|^\./||')
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --generate-notes \
+            --draft \
+            $files
+          gh release edit "$VERSION" --draft=false
