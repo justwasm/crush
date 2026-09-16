@@ -20,12 +20,46 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Build every binary on a parallel runner. Each entry uploads two artifacts:
-  #   <os>-<arch>      -> crush binary + completions + manpage (for packaging)
-  #   <os>-<arch>-dist -> the user-facing archive (.tar.gz / .zip)
+  # Pre-build host-native tooling once (completions + manpage). Cross-compiled
+  # binaries can't run on the runner that produced them, so we generate these
+  # on a native linux/amd64 build and ship the same files inside every archive.
+  # ---------------------------------------------------------------------------
+  tooling:
+    name: tooling (linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "^1.27"
+          cache: true
+      - name: Build helper for completions/manpage
+        run: |
+          mkdir -p tool out
+          CGO_ENABLED=0 GOEXPERIMENT=greenteagc \
+            go build -trimpath -ldflags "-s -w $LD_VERSION" -o tool/crush .
+          chmod +x tool/crush
+          ./tool/crush man | gzip -c > out/crush.1.gz
+          ./tool/crush completion bash > out/crush.bash
+          ./tool/crush completion zsh  > out/crush.zsh
+          ./tool/crush completion fish > out/crush.fish
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-files
+          path: out/*
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Build every binary on a parallel runner. Each entry uploads:
+  #   bin-raw-<goos>-<goarch><goarm>  -> crush binary + distro files (for
+  #                                      nfpm packaging)
+  #   bin-archive-<goos>-<goarch><goarm> -> user-facing tarball/zip
   # ---------------------------------------------------------------------------
   binary:
     name: ${{ matrix.goos }}/${{ matrix.goarch }}${{ matrix.goarm }}
+    needs: tooling
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +96,10 @@ jobs:
         with:
           go-version: "^1.27"
           cache: true
+      - uses: actions/download-artifact@3e5b1039e904a7a14f9c10b5e0117ec2b5f7bc68 # v8.0.1
+        with:
+          name: distro-files
+          path: distro
       - name: Compute archive suffix
         id: arch
         run: |
@@ -73,8 +111,8 @@ jobs:
           os_title=$(echo "${{ matrix.goos }}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
           ext="tar.gz"; [ "${{ matrix.goos }}" = "windows" ] && ext="zip"
           archive="crush_${VERSION}_${os_title}_${raw}.${ext}"
-          echo "raw=$raw"   >> "$GITHUB_OUTPUT"
-          echo "ext=$ext"   >> "$GITHUB_OUTPUT"
+          echo "raw=$raw"        >> "$GITHUB_OUTPUT"
+          echo "ext=$ext"        >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
       - name: Build binary
         env:
@@ -92,10 +130,7 @@ jobs:
           [ "$GOOS" = "windows" ] && bin="$raw_staging/crush.exe"
           go build -trimpath -ldflags "-s -w $LD_VERSION" -o "$bin" .
           chmod +x "$bin"
-          ./"$bin" man | gzip -c > "$raw_staging/crush.1.gz"
-          ./"$bin" completion bash > "$raw_staging/crush.bash"
-          ./"$bin" completion zsh  > "$raw_staging/crush.zsh"
-          ./"$bin" completion fish > "$raw_staging/crush.fish"
+          cp -R distro/. "$raw_staging/"
           cp README.md  "$raw_staging/README.md"  2>/dev/null || true
           cp LICENSE.md "$raw_staging/LICENSE.md" 2>/dev/null || true
 
@@ -123,10 +158,10 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
-  # Package Linux binaries into apk / deb / rpm / archlinux via nfpm.
+  # Linux packages via nfpm.
   # ---------------------------------------------------------------------------
   packages:
-    name: ${{ matrix.format }}/${{ matrix.goarch }}${{ matrix.goarm }}
+    name: pkg-${{ matrix.format }}/${{ matrix.goarch }}${{ matrix.goarm }}
     needs: binary
     strategy:
       fail-fast: false
@@ -154,10 +189,6 @@ jobs:
         with:
           name: bin-raw-linux-${{ matrix.goarch }}${{ matrix.goarm }}
           path: bin
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "^1.27"
-          cache: true
       - name: Install nfpm
         run: |
           curl -fsSL https://github.com/goreleaser/nfpm/releases/latest/download/nfpm_amd64.tar.gz \
@@ -176,8 +207,6 @@ jobs:
                    root/usr/share/fish/vendor_completions.d \
                    root/usr/share/doc/crush \
                    root/usr/share/licenses/crush
-          bin_name="crush"
-          [ "$GOARCH" = "arm" ] && manifest_arch="arm7"
           case "$GOARCH" in
             amd64) manifest_arch="amd64" ;;
             arm64) manifest_arch="arm64" ;;

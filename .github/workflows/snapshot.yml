@@ -18,8 +18,37 @@ env:
   LD_VERSION: -X github.com/charmbracelet/crush/internal/version.Version=0.0.0-${{ github.sha }}
 
 jobs:
+  tooling:
+    name: tooling (linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "^1.27"
+          cache: true
+      - name: Build helper
+        run: |
+          mkdir -p out
+          CGO_ENABLED=0 GOEXPERIMENT=greenteagc \
+            go build -trimpath -ldflags "-s -w $LD_VERSION" -o out/crush .
+          chmod +x out/crush
+          ./out/crush man | gzip -c > out/crush.1.gz
+          ./out/crush completion bash > out/crush.bash
+          ./out/crush completion zsh  > out/crush.zsh
+          ./out/crush completion fish > out/crush.fish
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-files
+          path: out/*
+          retention-days: 1
+
   binary:
     name: ${{ matrix.goos }}/${{ matrix.goarch }}${{ matrix.goarm }}
+    needs: tooling
     strategy:
       fail-fast: false
       matrix:
@@ -57,6 +86,10 @@ jobs:
         with:
           go-version: "^1.27"
           cache: true
+      - uses: actions/download-artifact@3e5b1039e904a7a14f9c10b5e0117ec2b5f7bc68 # v8.0.1
+        with:
+          name: distro-files
+          path: distro
       - name: Compute archive suffix
         id: arch
         run: |
@@ -68,8 +101,8 @@ jobs:
           os_title=$(echo "${{ matrix.goos }}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
           ext="tar.gz"; [ "${{ matrix.goos }}" = "windows" ] && ext="zip"
           archive="crush_${VERSION}_${os_title}_${raw}.${ext}"
-          echo "raw=$raw"   >> "$GITHUB_OUTPUT"
-          echo "ext=$ext"   >> "$GITHUB_OUTPUT"
+          echo "raw=$raw"        >> "$GITHUB_OUTPUT"
+          echo "ext=$ext"        >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
       - name: Build binary
         env:
@@ -87,9 +120,14 @@ jobs:
           [ "$GOOS" = "windows" ] && bin="$raw_staging/crush.exe"
           go build -trimpath -ldflags "-s -w $LD_VERSION" -o "$bin" .
           chmod +x "$bin"
+          cp -R distro/. "$raw_staging/"
+          cp README.md  "$raw_staging/README.md"  2>/dev/null || true
+          cp LICENSE.md "$raw_staging/LICENSE.md" 2>/dev/null || true
+
           dist_staging="crush_${VERSION}_${{ steps.arch.outputs.raw }}"
           mkdir -p "dist/$dist_staging"
-          cp "$bin" "dist/$dist_staging/crush$( [ "$GOOS" = "windows" ] && echo .exe)"
+          cp -R "$raw_staging/." "dist/$dist_staging/"
+
           if [ "$GOOS" = "windows" ]; then
             (cd dist && powershell -NoProfile -Command \
               "Compress-Archive -Force '$dist_staging' '$archive'")
