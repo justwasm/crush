@@ -4,7 +4,7 @@ go 1.27.0
 
 replace github.com/atotto/clipboard => github.com/justwasm/clipboard v0.1.6
 
-replace charm.land/bubbletea/v2 => github.com/bubbletui/bubbletea/v2 v2.0.11
+replace charm.land/bubbletea/v2 => github.com/bubbletui/bubbletea/v2 v2.1.1
 
 replace github.com/tursodatabase/libsql-client-go => github.com/justwasm/libsql-client-go v0.0.0-20260623175834-e56250431353
 
