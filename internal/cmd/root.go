@@ -55,12 +55,11 @@ import (
 
 var clientHost string
 
-var debug, _ = strconv.ParseBool(os.Getenv("CRUSH_DEBUG"))
-
 func init() {
+	debugEnv, _ := strconv.ParseBool(os.Getenv("CRUSH_DEBUG"))
 	rootCmd.PersistentFlags().StringP("cwd", "c", "", "Current working directory")
 	rootCmd.PersistentFlags().StringP("data-dir", "D", "", "Custom crush data directory")
-	rootCmd.PersistentFlags().BoolP("debug", "d", debug, "Debug")
+	rootCmd.PersistentFlags().BoolP("debug", "d", debugEnv, "Debug")
 	rootCmd.PersistentFlags().StringVarP(&clientHost, "host", "H", server.DefaultHost(), "Connect to a specific crush server host (for advanced users)")
 	rootCmd.Flags().BoolP("help", "h", false, "Help")
 	rootCmd.PersistentFlags().CountP("yolo", "y", "Skip permission prompts: -y to stop being asked and block dangerous commands, -yy to allow them too")

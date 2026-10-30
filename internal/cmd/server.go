@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/charmbracelet/crush/internal/config"
@@ -115,10 +113,8 @@ at /v1/docs/openapi.json.
 // error. A server has no terminal to lose, so SIGHUP reloads config here
 // instead of stopping it.
 func awaitStop(ctx context.Context, srv *server.Server, errch <-chan error) error {
-	signal.Reset(syscall.SIGHUP)
-	hupch := make(chan os.Signal, 1)
-	signal.Notify(hupch, syscall.SIGHUP)
-	defer signal.Stop(hupch)
+	hupch, stop := subscribeReloadSignals()
+	defer stop()
 
 	for {
 		select {
