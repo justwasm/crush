@@ -989,7 +989,7 @@ func (w *ClientWorkspace) runSubscription(send func(tea.Msg)) {
 			return
 		}
 
-		evc, err := w.client.SubscribeEvents(w.subCtx, w.workspaceID())
+		evc, err := w.subscribeEvents(w.subCtx, w.workspaceID())
 		if err != nil {
 			if w.subCtx.Err() != nil {
 				return

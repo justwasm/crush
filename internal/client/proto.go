@@ -112,6 +112,9 @@ func (c *Client) SetCurrentSession(ctx context.Context, workspaceID, sessionID s
 
 // SubscribeEvents subscribes to server-sent events for a workspace.
 func (c *Client) SubscribeEvents(ctx context.Context, id string) (<-chan any, error) {
+	if c.IsWSTransport() {
+		return c.SubscribeEventsWS(ctx, id)
+	}
 	events := make(chan any, 100)
 	q := url.Values{"client_id": []string{c.clientID}}
 	//nolint:bodyclose

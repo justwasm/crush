@@ -11,7 +11,10 @@ import (
 	"net/url"
 	stdpath "path"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"os"
 
 	"github.com/charmbracelet/crush/internal/config"
 	"github.com/charmbracelet/crush/internal/proto"
@@ -24,11 +27,12 @@ const DummyHost = "api.crush.localhost"
 
 // Client represents an RPC client connected to a Crush server.
 type Client struct {
-	h        *http.Client
-	path     string
-	network  string
-	addr     string
-	clientID string
+	h         *http.Client
+	path      string
+	network   string
+	addr      string
+	clientID  string
+	transport string
 }
 
 // DefaultClient creates a new [Client] connected to the default server address.
@@ -73,6 +77,25 @@ func (c *Client) Path() string {
 // The server uses it as a presence/coordination handle.
 func (c *Client) ClientID() string {
 	return c.clientID
+}
+
+// Transport returns the configured event transport ("" or "sse" or "ws").
+func (c *Client) Transport() string {
+	return c.transport
+}
+
+// SetTransport configures the event transport for the client.
+func (c *Client) SetTransport(transport string) {
+	c.transport = transport
+}
+
+// IsWSTransport reports whether WebSocket transport is configured for this client.
+func (c *Client) IsWSTransport() bool {
+	if strings.EqualFold(c.transport, "ws") || strings.EqualFold(c.transport, "websocket") {
+		return true
+	}
+	v := os.Getenv("CRUSH_TRANSPORT")
+	return strings.EqualFold(v, "ws") || strings.EqualFold(v, "websocket") || v == "1" || strings.EqualFold(v, "true")
 }
 
 // GetGlobalConfig retrieves the server's configuration.

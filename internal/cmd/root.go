@@ -275,10 +275,14 @@ func supportsProgressBar() bool {
 }
 
 // useClientServer returns true when the client/server architecture is
-// enabled via the CRUSH_CLIENT_SERVER environment variable.
+// enabled via the CRUSH_CLIENT_SERVER environment variable, CRUSH_TRANSPORT,
+// or a ws:// or wss:// host URL scheme.
 func useClientServer() bool {
 	v, _ := strconv.ParseBool(os.Getenv("CRUSH_CLIENT_SERVER"))
-	return v
+	if v {
+		return true
+	}
+	return isWSTransport(clientHost)
 }
 
 // setupWorkspaceWithProgressBar wraps setupWorkspace with an optional
@@ -462,6 +466,9 @@ func connectToServer(cmd *cobra.Command) (*client.Client, *proto.Workspace, func
 	c, err := client.NewClient(cwd, hostURL.Scheme, hostURL.Host)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	if isWSTransport(clientHost) {
+		c.SetTransport("ws")
 	}
 
 	wsPermMode := proto.WorkspacePermissionModeNormal

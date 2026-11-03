@@ -201,6 +201,10 @@ func (c *controllerV1) handleGetWorkspaceProviders(w http.ResponseWriter, r *htt
 
 // handleGetWorkspaceEvents streams workspace events as Server-Sent Events.
 func (c *controllerV1) handleGetWorkspaceEvents(w http.ResponseWriter, r *http.Request) {
+	if isWebSocketRequest(r) {
+		c.handleWorkspaceEventsWS(w, r)
+		return
+	}
 	flusher := http.NewResponseController(w)
 	id := r.PathValue("id")
 	clientID, ok := c.requireClientID(w, r)

@@ -38,14 +38,14 @@ func socketDir() string {
 // ErrServerClosed is returned when the server is closed.
 var ErrServerClosed = http.ErrServerClosed
 
-// ParseHostURL parses a host URL into a [url.URL]. The "http" scheme
-// is accepted as an alias for "tcp" and normalized to it.
+// ParseHostURL parses a host URL into a [url.URL]. The "http", "https", "ws", and "wss"
+// schemes are accepted as aliases for "tcp" and normalized to it.
 func ParseHostURL(host string) (*url.URL, error) {
 	proto, addr, ok := strings.Cut(host, "://")
 	if !ok {
 		return nil, fmt.Errorf("invalid host format: %s", host)
 	}
-	if proto == "http" {
+	if proto == "http" || proto == "ws" || proto == "https" || proto == "wss" {
 		proto = "tcp"
 	}
 
@@ -169,6 +169,7 @@ func (s *Server) installHandler() {
 	mux.HandleFunc("GET /v1/docs/", c.handleDocsIndex)
 	mux.HandleFunc("GET /v1/docs/openapi.json", c.handleDocsSpec)
 	mux.HandleFunc("/v1/ws", c.handleWebSocket)
+	mux.HandleFunc("/v1/workspaces/{id}/ws", c.handleWorkspaceEventsWS)
 	s.h = &http.Server{
 		Protocols: &p,
 		Handler:   s.recoverHandler(s.loggingHandler(mux)),

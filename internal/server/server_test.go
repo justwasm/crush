@@ -21,6 +21,10 @@ func TestParseHostURL(t *testing.T) {
 		{name: "tcp with base path", host: "tcp://127.0.0.1:8080/api", scheme: "tcp", addr: "127.0.0.1:8080", basePath: "/api"},
 		{name: "http aliases tcp", host: "http://127.0.0.1:8080", scheme: "tcp", addr: "127.0.0.1:8080"},
 		{name: "http with base path", host: "http://127.0.0.1:8080/api", scheme: "tcp", addr: "127.0.0.1:8080", basePath: "/api"},
+		{name: "ws aliases tcp", host: "ws://127.0.0.1:8080", scheme: "tcp", addr: "127.0.0.1:8080"},
+		{name: "ws with base path", host: "ws://127.0.0.1:8080/api", scheme: "tcp", addr: "127.0.0.1:8080", basePath: "/api"},
+		{name: "wss aliases tcp", host: "wss://127.0.0.1:8080", scheme: "tcp", addr: "127.0.0.1:8080"},
+		{name: "https aliases tcp", host: "https://127.0.0.1:8080", scheme: "tcp", addr: "127.0.0.1:8080"},
 		{name: "unix", host: "unix:///tmp/crush.sock", scheme: "unix", addr: "/tmp/crush.sock"},
 		{name: "missing separator", host: "127.0.0.1:8080", wantErr: true},
 	}
