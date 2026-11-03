@@ -104,6 +104,7 @@ type Server struct {
 
 	backend *backend.Backend
 	logger  *slog.Logger
+	cfg     *config.ConfigStore
 }
 
 // SetLogger sets the logger for the server.
@@ -132,6 +133,7 @@ func NewServer(cfg *config.ConfigStore, network, address string) *Server {
 	s := new(Server)
 	s.Addr = address
 	s.network = network
+	s.cfg = cfg
 
 	// The backend is created with a shutdown callback that triggers
 	// a graceful server shutdown (e.g. when the last workspace is
@@ -166,6 +168,7 @@ func (s *Server) installHandler() {
 	}
 	mux.HandleFunc("GET /v1/docs/", c.handleDocsIndex)
 	mux.HandleFunc("GET /v1/docs/openapi.json", c.handleDocsSpec)
+	mux.HandleFunc("/v1/ws", c.handleWebSocket)
 	s.h = &http.Server{
 		Protocols: &p,
 		Handler:   s.recoverHandler(s.loggingHandler(mux)),
