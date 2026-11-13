@@ -72,9 +72,29 @@ func (m *modelsDialogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		_ = m.models.HandleMsg(msg)
 	case tea.MouseMsg:
-		_ = m.models.HandleMsg(msg)
+		_, _ = m.HandleMouse(msg)
 	}
 	return m, nil
+}
+
+// HandleMouse implements storybook.MouseHandler, enabling mouse wheel scrolling
+// exclusively for the custom framed onboarding preset (state 4) without touching crush core.
+func (m *modelsDialogModel) HandleMouse(ev tea.MouseMsg) (tea.Cmd, bool) {
+	if m.models == nil {
+		return nil, false
+	}
+	if m.stateIdx == 3 {
+		mouse := ev.Mouse()
+		switch mouse.Button {
+		case tea.MouseWheelUp:
+			_ = m.models.HandleMsg(tea.KeyPressMsg(tea.Key{Code: tea.KeyUp}))
+			return nil, true
+		case tea.MouseWheelDown:
+			_ = m.models.HandleMsg(tea.KeyPressMsg(tea.Key{Code: tea.KeyDown}))
+			return nil, true
+		}
+	}
+	return nil, false
 }
 
 func (m *modelsDialogModel) View() tea.View {

@@ -106,3 +106,56 @@ func TestInteractiveDialogKeyHandling(t *testing.T) {
 		t.Fatalf("expected quit question in view, got: %s", v)
 	}
 }
+
+func TestModelsDialogMouseScroll(t *testing.T) {
+	stories := storybook.DefaultRegistry.Stories()
+	var modelsStory *storybook.Story
+	for _, s := range stories {
+		if s.ID == "dialog-models" {
+			sc := s
+			modelsStory = &sc
+			break
+		}
+	}
+
+	if modelsStory == nil {
+		t.Fatalf("dialog-models story not found")
+	}
+
+	inst := modelsStory.Factory()
+	if r, ok := inst.(storybook.Resizable); ok {
+		r.SetSize(80, 24)
+	}
+	st, ok := inst.(storybook.Stateful)
+	if !ok {
+		t.Fatalf("expected modelsDialogModel to implement storybook.Stateful")
+	}
+	st.SetState(3) // 4th preset: Framed Onboarding Flow
+
+	v1 := inst.View()
+
+	// Deliver mouse wheel down
+	mh, ok := inst.(storybook.MouseHandler)
+	if !ok {
+		t.Fatalf("expected modelsDialogModel to implement storybook.MouseHandler")
+	}
+
+	_, handled := mh.HandleMouse(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+	if !handled {
+		t.Fatalf("expected HandleMouse to handle MouseWheelDown on state 3")
+	}
+
+	// Verify that presets 0, 1, 2 do NOT intercept mouse scroll (retaining standard Crush behavior)
+	for s := 0; s < 3; s++ {
+		st.(storybook.Stateful).SetState(s)
+		_, h := mh.HandleMouse(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+		if h {
+			t.Fatalf("expected HandleMouse NOT to handle mouse on state %d", s)
+		}
+	}
+
+	v2 := inst.View()
+	if len(v1) == 0 || len(v2) == 0 {
+		t.Fatalf("empty view")
+	}
+}
