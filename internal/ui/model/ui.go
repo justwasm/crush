@@ -29,6 +29,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/catwalk/v3/pkg/catwalk"
 	"charm.land/lipgloss/v2"
+	"github.com/justwasm/boba"
 	"github.com/charmbracelet/crush/internal/agent"
 	"github.com/charmbracelet/crush/internal/agent/hyper"
 	"github.com/charmbracelet/crush/internal/agent/notify"
@@ -486,7 +487,7 @@ type UI struct {
 	// program is the running Bubble Tea program, set via SetProgram. It is
 	// needed to release and restore the terminal when a terminal-based GPG
 	// pinentry dialog takes over the screen.
-	program *tea.Program
+	program boba.Program
 
 	// pinentryActive tracks whether the terminal is currently handed over
 	// to a pinentry dialog; pinentryTouchPending tracks whether the status
@@ -667,7 +668,7 @@ func New(com *common.Common, initialSessionID string, continueLast bool) *UI {
 // It is used to release and restore the terminal when a terminal-based GPG
 // pinentry dialog takes over the screen. Must be called before the program
 // starts processing pinentry events.
-func (m *UI) SetProgram(program *tea.Program) {
+func (m *UI) SetProgram(program boba.Program) {
 	m.program = program
 }
 
