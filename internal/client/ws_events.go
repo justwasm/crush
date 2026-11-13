@@ -33,14 +33,10 @@ func (c *Client) SubscribeEventsWS(ctx context.Context, id string) (<-chan any, 
 	var dialOpts *websocket.DialOptions
 	if c.network == "unix" || c.network == "npipe" {
 		tr := &http.Transport{DialContext: c.dialer}
-		dialOpts = &websocket.DialOptions{
-			HTTPClient: &http.Client{Transport: tr},
-		}
+		dialOpts = wsDialOptions(&http.Client{Transport: tr})
 	} else if c.h != nil {
 		tr := c.h.Transport
-		dialOpts = &websocket.DialOptions{
-			HTTPClient: &http.Client{Transport: tr},
-		}
+		dialOpts = wsDialOptions(&http.Client{Transport: tr})
 	}
 
 	conn, rsp, err := websocket.Dial(ctx, wsURL, dialOpts)

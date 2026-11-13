@@ -108,9 +108,7 @@ type WSClient struct {
 func DialWS(ctx context.Context, u string, opts *WSDialOptions) (*WSClient, error) {
 	var dialOpts *websocket.DialOptions
 	if opts != nil && opts.HTTPClient != nil {
-		dialOpts = &websocket.DialOptions{
-			HTTPClient: opts.HTTPClient,
-		}
+		dialOpts = wsDialOptions(opts.HTTPClient)
 	}
 
 	conn, _, err := websocket.Dial(ctx, u, dialOpts)
