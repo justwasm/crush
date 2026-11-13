@@ -96,11 +96,16 @@ func (m *modelsDialogModel) View() tea.View {
 		boxW := max(40, min(73, w-6))
 		boxH := max(12, min(22, h-6))
 
-		innerWidth := boxW - dialogStyle.GetHorizontalFrameSize()
-		innerHeight := boxH - dialogStyle.GetVerticalFrameSize()
+		// In Crush's internal/ui/dialog/models.go:
+		//   width := min(defaultModelsDialogMaxWidth, area.Dx() - t.Dialog.View.GetHorizontalBorderSize())
+		//   innerWidth := width - t.Dialog.View.GetHorizontalFrameSize()
+		// To ensure the list and scrollbar exactly span the frame's inner width (without double border/padding subtraction),
+		// we pass drawWidth = boxW + dialogStyle.GetHorizontalBorderSize().
+		drawWidth := boxW + dialogStyle.GetHorizontalBorderSize()
+		drawHeight := boxH + dialogStyle.GetVerticalBorderSize()
 
-		subCanvas := uv.NewScreenBuffer(innerWidth, innerHeight)
-		m.models.Draw(subCanvas, image.Rect(0, 0, innerWidth, innerHeight))
+		subCanvas := uv.NewScreenBuffer(drawWidth, drawHeight)
+		m.models.Draw(subCanvas, image.Rect(0, 0, drawWidth, drawHeight))
 
 		rawLines := strings.Split(strings.ReplaceAll(subCanvas.Render(), "\r\n", "\n"), "\n")
 		var validLines []string
@@ -118,7 +123,7 @@ func (m *modelsDialogModel) View() tea.View {
 		}
 		innerContent := strings.Join(validLines, "\n")
 
-		titleContentWidth := innerWidth - titleStyle.GetHorizontalFrameSize()
+		titleContentWidth := boxW - dialogStyle.GetHorizontalFrameSize() - titleStyle.GetHorizontalFrameSize()
 		title := common.DialogTitle(t, "Onboarding Setup", titleContentWidth, t.Dialog.TitleGradFromColor, t.Dialog.TitleGradToColor)
 		header := titleStyle.Render(title)
 
