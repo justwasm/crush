@@ -284,6 +284,8 @@ github.com/justwasm/machineid v1.1.2 h1:vA8F17E9Fe1/H1rEVdJAuF9kNpJ/HL2fbuLhgelZ
 github.com/justwasm/machineid v1.1.2/go.mod h1:xGgXjoo5tXTI8q6l36uoOcHgP4AB2V8mb1J6Bf3WP/o=
 github.com/justwasm/sqlite3-vfs-idb v0.0.7 h1:Tg5x8KlgMQh730nzRsmb4WA6PNi0RRN9mUqkmXHagcs=
 github.com/justwasm/sqlite3-vfs-idb v0.0.7/go.mod h1:vI53UuDP8Rcg6vId+RbVgqpMI8eQpUAKZjLdaABE1qg=
+github.com/justwasm/storybook v0.0.1 h1:vSSSrT5mxmT8sOKE4D/UnpFSVIUv1+RJTlyx6SUmJOA=
+github.com/justwasm/storybook v0.0.1/go.mod h1:LsDlcB4ZJKjsthtnrVuNXOUmPbMmzPmL4XMYQW16qb0=
 github.com/justwasm/wstack v0.0.3 h1:BqGA1e1thDr1eMn6Lm5RIPUo5afqA95sc2CCWk8QkTc=
 github.com/justwasm/wstack v0.0.3/go.mod h1:6ut5pj/2ssvP6IxyrnSIgjpk2dvoglDPw3H3UpgGy28=
 github.com/kaptinlin/jsonpointer v0.4.28 h1:PyxOfdml9PGpxQz+JnNLGsyzQ+Rnm+OVNTGcgbVLqgg=

@@ -60,7 +60,7 @@ require (
 	github.com/justwasm/boba v0.7.2
 	github.com/justwasm/machineid v1.1.2
 	github.com/justwasm/sqlite3-vfs-idb v0.0.7
-	github.com/justwasm/storybook v0.0.0
+	github.com/justwasm/storybook v0.0.1
 	github.com/justwasm/wstack v0.0.3
 	github.com/lucasb-eyer/go-colorful v1.4.1
 	github.com/mattn/go-isatty v0.0.24
@@ -240,5 +240,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
-
-replace github.com/justwasm/storybook => ../storybook
